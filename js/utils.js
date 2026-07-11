@@ -36,6 +36,11 @@ export function formatDateKr(dateStr) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${week[d.getDay()]})`;
 }
 
+export function formatDateYMDKr(dateStr) {
+  const d = strToDate(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
 
 export function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));

@@ -18,7 +18,7 @@ export function renderScore(container) {
 
   if (!rounds.length) {
     container.innerHTML = `
-      <div class="score-page-title">스코어</div>
+      <div class="page-title">스코어</div>
       <div class="empty-state">표시할 라운드가 없어요.<br>라운드 당일부터 이곳에 카드가 표시됩니다.</div>
     `;
     return;
@@ -44,7 +44,7 @@ export function renderScore(container) {
   `).join('');
 
   container.innerHTML = `
-    <div class="score-page-title">스코어</div>
+    <div class="page-title">스코어</div>
     ${groupsHtml}
   `;
 

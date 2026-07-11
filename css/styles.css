@@ -469,7 +469,7 @@ button, input, select, textarea {
 }
 
 /* Score view */
-.score-page-title {
+.page-title {
   text-align: center;
   font-size: 20px;
   font-weight: 800;
@@ -785,24 +785,34 @@ button, input, select, textarea {
 }
 .chart-wrap canvas { width: 100%; display: block; }
 
-.stats-grid {
+.stat-tile-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
+
+.stat-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 14px;
+  text-align: center;
+}
+.stat-tile .icon { font-size: 26px; margin-bottom: 8px; line-height: 1; }
+.stat-tile .value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+.stat-tile .label { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-top: 4px; }
 
 .record-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 12px 4px;
+  padding: 14px 4px;
   border-bottom: 1px solid var(--border);
 }
 .record-item:last-child { border-bottom: none; }
-.record-item .info .date { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
-.record-item .info .course { font-size: 14px; font-weight: 700; }
-.record-item .tags { display: flex; gap: 4px; margin-top: 3px; }
+.record-item .info .course { font-size: 15px; font-weight: 700; }
+.record-item .info .date { font-size: 12px; color: var(--text-secondary); font-weight: 600; margin-top: 3px; }
+.record-item .tags { display: flex; gap: 4px; margin-top: 5px; }
 .tag {
   font-size: 10px;
   font-weight: 700;
@@ -813,7 +823,13 @@ button, input, select, textarea {
 }
 .tag.cancelled { background: rgba(255, 149, 0, 0.15); color: var(--cancel); }
 .tag.block { background: rgba(142, 142, 147, 0.18); color: var(--block); }
-.record-item .score { font-size: 16px; font-weight: 800; color: var(--primary); }
+
+.record-item .score-block { text-align: right; flex-shrink: 0; }
+.record-item .score-block .score { font-size: 16px; font-weight: 800; }
+.record-item .score-block .diff { font-size: 12px; font-weight: 700; margin-top: 3px; }
+.record-item .score-block .diff.over { color: var(--score-over); }
+.record-item .score-block .diff.under { color: var(--score-under); }
+.record-item .score-block .diff.even { color: var(--text-secondary); }
 
 /* Modal */
 .modal-overlay {

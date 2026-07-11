@@ -1,5 +1,8 @@
 import { getScoreTrend, getStatsSummary, getRoundsList } from './state.js';
-import { formatDateKr, round1, escapeHtml } from './utils.js';
+import { formatDateYMDKr, round1, escapeHtml, strToDate } from './utils.js';
+
+const CHART_MIN = 70;
+const CHART_MAX = 110;
 
 export function renderStats(container) {
   const trend = getScoreTrend();
@@ -19,51 +22,68 @@ export function renderStats(container) {
       const tags = [];
       if (r.isBlock) tags.push('<span class="tag block">블럭</span>');
       if (r.cancelled) tags.push('<span class="tag cancelled">취소</span>');
-      const scoreDisplay = typeof r.score === 'number' ? r.score : '-';
+      const hasScore = typeof r.score === 'number';
+      const diff = hasScore && typeof r.par === 'number' ? r.score - r.par : null;
+      const diffText = diff === null ? '' : diff === 0 ? 'PAR' : diff > 0 ? `+${diff}` : `${diff}`;
+      const diffCls = diff === null ? '' : diff > 0 ? 'over' : diff < 0 ? 'under' : 'even';
       return `
         <div class="record-item">
           <div class="info">
-            <div class="date">${formatDateKr(r.date)}</div>
             <div class="course">${escapeHtml(r.course || (r.isBlock ? '블럭 일정' : '골프장 미정'))}</div>
+            <div class="date">${formatDateYMDKr(r.date)}</div>
             <div class="tags">${tags.join('')}</div>
           </div>
-          <div class="score">${scoreDisplay}</div>
+          <div class="score-block">
+            <div class="score">${hasScore ? `${r.score}타` : '-'}</div>
+            ${diffText ? `<div class="diff ${diffCls}">${diffText}</div>` : ''}
+          </div>
         </div>`;
     }).join('')
     : `<div class="empty-state">전체 기록이 없어요</div>`;
 
   container.innerHTML = `
-    <div class="section-title">스코어 추이</div>
-    <div class="chart-wrap">
-      <canvas id="trend-canvas" height="180"></canvas>
+    <div class="page-title">통계</div>
+
+    <div class="section-title" style="margin-top:0;">나의 골프 기록</div>
+    <div class="stat-tile-grid">
+      <div class="stat-tile">
+        <div class="icon">🚩</div>
+        <div class="value">${summary.total}회</div>
+        <div class="label">총 라운드</div>
+      </div>
+      <div class="stat-tile">
+        <div class="icon">🏆</div>
+        <div class="value">${bestText}</div>
+        <div class="label">베스트 스코어</div>
+      </div>
+      <div class="stat-tile">
+        <div class="icon">📈</div>
+        <div class="value">${avgText}</div>
+        <div class="label">평균 스코어</div>
+      </div>
+      <div class="stat-tile">
+        <div class="icon" style="color: var(--score-over);">±</div>
+        <div class="value">${parDiffText}</div>
+        <div class="label">평균 파 대비</div>
+      </div>
     </div>
 
-    <div class="stats-grid">
-      <div class="summary-tile">
-        <div class="value">${bestText}</div>
-        <div class="label">베스트</div>
-      </div>
-      <div class="summary-tile">
-        <div class="value neutral">${avgText}</div>
-        <div class="label">평균</div>
-      </div>
-      <div class="summary-tile">
-        <div class="value neutral">${parDiffText}</div>
-        <div class="label">파 대비</div>
-      </div>
+    <div class="section-title">스코어 추이</div>
+    <div class="chart-wrap">
+      <canvas id="trend-canvas" height="220"></canvas>
     </div>
 
     <div class="section-title">전체 기록</div>
     <div class="card">${recordsHtml}</div>
   `;
 
-  drawTrendChart(container.querySelector('#trend-canvas'), trend);
+  drawTrendChart(container.querySelector('#trend-canvas'), trend, summary.average);
 }
 
-function drawTrendChart(canvas, trend) {
+function drawTrendChart(canvas, trend, average) {
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = canvas.parentElement.clientWidth - 24;
-  const cssHeight = 180;
+  const cssHeight = 220;
   canvas.width = cssWidth * dpr;
   canvas.height = cssHeight * dpr;
   canvas.style.width = `${cssWidth}px`;
@@ -76,6 +96,7 @@ function drawTrendChart(canvas, trend) {
   const primary = styles.getPropertyValue('--primary').trim() || '#2DC96E';
   const textSecondary = styles.getPropertyValue('--text-secondary').trim() || '#888';
   const border = styles.getPropertyValue('--border').trim() || '#333';
+  const avgColor = styles.getPropertyValue('--cancel').trim() || '#FF9500';
 
   if (!trend.length) {
     ctx.fillStyle = textSecondary;
@@ -92,32 +113,45 @@ function drawTrendChart(canvas, trend) {
   const plotW = cssWidth - padL - padR;
   const plotH = cssHeight - padT - padB;
 
-  const scores = trend.map((t) => t.score);
-  let min = Math.min(...scores);
-  let max = Math.max(...scores);
-  if (min === max) { min -= 5; max += 5; }
-  const margin = (max - min) * 0.15 || 5;
-  min -= margin;
-  max += margin;
+  const min = CHART_MIN;
+  const max = CHART_MAX;
 
   const xFor = (i) => padL + (trend.length === 1 ? plotW / 2 : (i / (trend.length - 1)) * plotW);
-  const yFor = (v) => padT + plotH - ((v - min) / (max - min)) * plotH;
+  const yFor = (v) => padT + plotH - ((clamp(v, min, max) - min) / (max - min)) * plotH;
 
-  // grid lines (3 horizontal)
+  // grid lines every 10, from min to max
   ctx.strokeStyle = border;
   ctx.lineWidth = 1;
   ctx.fillStyle = textSecondary;
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'right';
-  const gridCount = 3;
-  for (let i = 0; i <= gridCount; i++) {
-    const v = min + ((max - min) * i) / gridCount;
+  const step = 10;
+  for (let v = min; v <= max; v += step) {
     const y = yFor(v);
     ctx.beginPath();
     ctx.moveTo(padL, y);
     ctx.lineTo(cssWidth - padR, y);
     ctx.stroke();
-    ctx.fillText(Math.round(v).toString(), padL - 6, y + 3);
+    ctx.fillText(v.toString(), padL - 6, y + 3);
+  }
+
+  // average dashed line
+  if (typeof average === 'number') {
+    const avgY = yFor(average);
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = avgColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padL, avgY);
+    ctx.lineTo(cssWidth - padR, avgY);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = avgColor;
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`평균 ${round1(average)}`, cssWidth - padR - 4, avgY - 5);
   }
 
   // line path
@@ -151,15 +185,25 @@ function drawTrendChart(canvas, trend) {
     ctx.fill();
   });
 
-  // x labels: first and last date
+  // x labels: a handful of evenly spaced year-month labels
   ctx.fillStyle = textSecondary;
-  ctx.textAlign = 'left';
-  ctx.fillText(shortDate(trend[0].date), padL, cssHeight - 6);
-  ctx.textAlign = 'right';
-  ctx.fillText(shortDate(trend[trend.length - 1].date), cssWidth - padR, cssHeight - 6);
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  const labelCount = Math.min(4, trend.length);
+  for (let i = 0; i < labelCount; i++) {
+    const idx = labelCount === 1 ? 0 : Math.round((i / (labelCount - 1)) * (trend.length - 1));
+    const x = xFor(idx);
+    const align = idx === 0 ? 'left' : idx === trend.length - 1 ? 'right' : 'center';
+    ctx.textAlign = align;
+    ctx.fillText(monthLabel(trend[idx].date), x, cssHeight - 6);
+  }
 }
 
-function shortDate(dateStr) {
-  const [, m, d] = dateStr.split('-');
-  return `${Number(m)}/${Number(d)}`;
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function monthLabel(dateStr) {
+  const d = strToDate(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
 }
