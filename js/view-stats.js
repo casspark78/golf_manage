@@ -1,4 +1,4 @@
-import { getScoreTrend, getStatsSummary, getRoundsList } from './state.js';
+import { getScoreTrend, getStatsSummary, getPlayableRounds } from './state.js';
 import { formatDateYMDKr, round1, escapeHtml, strToDate } from './utils.js';
 
 const CHART_MIN = 70;
@@ -7,7 +7,7 @@ const CHART_MAX = 110;
 export function renderStats(container) {
   const trend = getScoreTrend();
   const summary = getStatsSummary();
-  const allRounds = getRoundsList()
+  const allRounds = getPlayableRounds()
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date));
 
@@ -19,27 +19,22 @@ export function renderStats(container) {
 
   const recordsHtml = allRounds.length
     ? allRounds.map((r) => {
-      const tags = [];
-      if (r.isBlock) tags.push('<span class="tag block">블럭</span>');
-      if (r.cancelled) tags.push('<span class="tag cancelled">취소</span>');
-      const hasScore = typeof r.score === 'number';
-      const diff = hasScore && typeof r.par === 'number' ? r.score - r.par : null;
+      const diff = typeof r.par === 'number' ? r.score - r.par : null;
       const diffText = diff === null ? '' : diff === 0 ? 'PAR' : diff > 0 ? `+${diff}` : `${diff}`;
       const diffCls = diff === null ? '' : diff > 0 ? 'over' : diff < 0 ? 'under' : 'even';
       return `
         <div class="record-item">
           <div class="info">
-            <div class="course">${escapeHtml(r.course || (r.isBlock ? '블럭 일정' : '골프장 미정'))}</div>
+            <div class="course">${escapeHtml(r.course || '골프장 미정')}</div>
             <div class="date">${formatDateYMDKr(r.date)}</div>
-            <div class="tags">${tags.join('')}</div>
           </div>
           <div class="score-block">
-            <div class="score">${hasScore ? `${r.score}타` : '-'}</div>
+            <div class="score">${r.score}타</div>
             ${diffText ? `<div class="diff ${diffCls}">${diffText}</div>` : ''}
           </div>
         </div>`;
     }).join('')
-    : `<div class="empty-state">전체 기록이 없어요</div>`;
+    : `<div class="empty-state">완료된 기록이 없어요</div>`;
 
   container.innerHTML = `
     <div class="page-title">통계</div>
