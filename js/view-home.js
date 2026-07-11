@@ -18,7 +18,7 @@ export function renderHome(container, { goToTab }) {
         <span class="badge-icon">⛳</span>
         <div class="dday">${ddayLabel}</div>
         <div class="course">${escapeHtml(next.course || '골프장 미정')}</div>
-        <div class="meta">${formatDateKr(next.date)} · ${next.holes}홀${next.companions?.length ? ` · 동반자 ${next.companions.length}명` : ''}</div>
+        <div class="meta">${formatDateKr(next.date)} · ${next.holes}홀${next.companions?.length ? ` · ${escapeHtml(next.companions.join(', '))}` : ''}</div>
       </div>`;
   } else {
     ddayBlock = `
