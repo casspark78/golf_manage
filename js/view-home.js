@@ -1,5 +1,6 @@
-import { getNextRound, getRecentResults, getStatsSummary } from './state.js';
+import { getNextRound, getRecentResults, getStatsSummary, getState } from './state.js';
 import { formatDateKr, diffDays, todayStr, round1, escapeHtml } from './utils.js';
+import { getDailyForecast } from './weather.js';
 
 export function renderHome(container, { goToTab }) {
   const summary = getStatsSummary();
@@ -15,10 +16,14 @@ export function renderHome(container, { goToTab }) {
     const ddayLabel = d === 0 ? 'D-DAY' : d > 0 ? `D-${d}` : `D+${Math.abs(d)}`;
     ddayBlock = `
       <div class="next-round-card">
-        <span class="badge-icon">⛳</span>
-        <div class="dday">${ddayLabel}</div>
-        <div class="course">${escapeHtml(next.course || '골프장 미정')}</div>
-        <div class="meta">${formatDateKr(next.date)} · ${next.holes}홀${next.companions?.length ? ` · ${escapeHtml(next.companions.join(', '))}` : ''}</div>
+        <div class="next-round-body">
+          <div class="next-round-main">
+            <div class="dday">${ddayLabel}</div>
+            <div class="course">${escapeHtml(next.course || '골프장 미정')}</div>
+            <div class="meta">${formatDateKr(next.date)} · ${next.holes}홀${next.companions?.length ? ` · ${escapeHtml(next.companions.join(', '))}` : ''}</div>
+          </div>
+          <div class="next-round-weather" id="next-round-weather"></div>
+        </div>
       </div>`;
   } else {
     ddayBlock = `
@@ -74,4 +79,34 @@ export function renderHome(container, { goToTab }) {
   `;
 
   container.querySelector('#home-go-stats')?.addEventListener('click', () => goToTab('stats'));
+
+  if (next) {
+    loadNextRoundWeather(container, next.date);
+  }
+}
+
+async function loadNextRoundWeather(container, dateStr) {
+  const weatherEl = container.querySelector('#next-round-weather');
+  if (!weatherEl) return;
+
+  const { lat, lon } = getState().settings.weatherLocation || {};
+  if (typeof lat !== 'number' || typeof lon !== 'number') return;
+
+  try {
+    const forecast = await getDailyForecast(lat, lon, dateStr);
+    if (!container.querySelector('#next-round-weather')) return; // view changed while awaiting
+    if (!forecast) {
+      weatherEl.innerHTML = `<div class="w-label">예보 없음</div>`;
+      return;
+    }
+    weatherEl.innerHTML = `
+      <div class="w-icon">${forecast.icon}</div>
+      <div class="w-label">${escapeHtml(forecast.label)}</div>
+      <div class="w-temp">${forecast.tempMax}° / ${forecast.tempMin}°</div>
+      <div class="w-wind">바람 ${forecast.windMax}km/h</div>
+    `;
+  } catch (e) {
+    console.error(e);
+    if (weatherEl.isConnected) weatherEl.innerHTML = '';
+  }
 }

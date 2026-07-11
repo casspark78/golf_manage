@@ -4,6 +4,8 @@ import { renderSchedule, bindScheduleModalChrome } from './view-schedule.js';
 import { renderScore } from './view-score.js';
 import { renderStats } from './view-stats.js';
 import { openModal, closeModal, toast, confirmAction } from './components.js';
+import { geocodeLocation } from './weather.js';
+import { escapeHtml } from './utils.js';
 
 const SUN_PATH = `<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
 const MOON_PATH = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
@@ -80,6 +82,19 @@ function setupSettingsModal() {
       <button class="btn btn-primary" id="save-key-btn" style="width:100%;">저장</button>
       <div class="settings-row" style="margin-top:8px;">
         <div>
+          <div class="label">날씨 지역</div>
+          <div class="desc">홈 탭 다음 라운드 카드에 표시할 날씨 조회 지역입니다</div>
+        </div>
+      </div>
+      <div class="field-row" style="grid-template-columns: 1fr auto; align-items:end; margin-top:10px;">
+        <div class="field">
+          <input type="text" id="weather-location-input" placeholder="예: 서울, 포천" value="${escapeHtml(settings.weatherLocation?.name || '')}">
+        </div>
+        <button class="btn btn-secondary" id="save-location-btn" style="flex:0 0 auto;">저장</button>
+      </div>
+
+      <div class="settings-row" style="margin-top:16px;">
+        <div>
           <div class="label">데이터 위치</div>
           <div class="desc">모든 기록은 이 기기의 브라우저에만 저장됩니다 (오프라인 사용 가능)</div>
         </div>
@@ -102,6 +117,23 @@ function setupSettingsModal() {
       updateSettings({ geminiApiKey: key });
       toast('API 키가 저장되었습니다.');
       closeModal(overlay);
+    });
+
+    const saveLocationBtn = body.querySelector('#save-location-btn');
+    saveLocationBtn.addEventListener('click', async () => {
+      const query = body.querySelector('#weather-location-input').value.trim();
+      if (!query) return;
+      saveLocationBtn.disabled = true;
+      try {
+        const loc = await geocodeLocation(query);
+        updateSettings({ weatherLocation: loc });
+        toast(`날씨 지역이 "${loc.name}"(으)로 저장되었습니다.`);
+      } catch (e) {
+        console.error(e);
+        toast(e.message || '지역을 찾지 못했습니다.', 3200);
+      } finally {
+        saveLocationBtn.disabled = false;
+      }
     });
 
     body.querySelector('#export-data-btn').addEventListener('click', () => {

@@ -32,6 +32,7 @@ export function saveRounds(rounds) {
 const DEFAULT_SETTINGS = {
   theme: 'dark',
   geminiApiKey: '',
+  weatherLocation: { lat: 37.5665, lon: 126.9780, name: '서울' },
 };
 
 export function getSettings() {

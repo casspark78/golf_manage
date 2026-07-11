@@ -201,6 +201,15 @@ button, input, select, textarea {
   overflow: hidden;
 }
 
+.next-round-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.next-round-main { min-width: 0; }
+
 .next-round-card .dday {
   font-size: 32px;
   font-weight: 900;
@@ -220,13 +229,18 @@ button, input, select, textarea {
   font-weight: 600;
 }
 
-.next-round-card .badge-icon {
-  position: absolute;
-  right: -10px;
-  top: -10px;
-  font-size: 90px;
-  opacity: 0.15;
+.next-round-weather {
+  flex-shrink: 0;
+  min-width: 76px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 10px 12px;
 }
+.next-round-weather .w-icon { font-size: 24px; line-height: 1; }
+.next-round-weather .w-label { font-size: 10px; font-weight: 700; margin-top: 3px; white-space: nowrap; }
+.next-round-weather .w-temp { font-size: 13px; font-weight: 800; margin-top: 4px; white-space: nowrap; }
+.next-round-weather .w-wind { font-size: 10px; font-weight: 600; margin-top: 3px; opacity: 0.85; white-space: nowrap; }
 
 .empty-state {
   text-align: center;
