@@ -147,3 +147,35 @@ export function getScoreTrend() {
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((r) => ({ date: r.date, score: r.score, par: r.par }));
 }
+
+function topByAverage(groups, limit) {
+  return Object.entries(groups)
+    .map(([name, scores]) => ({
+      name,
+      count: scores.length,
+      average: scores.reduce((a, b) => a + b, 0) / scores.length,
+    }))
+    .sort((a, b) => a.average - b.average)
+    .slice(0, limit);
+}
+
+export function getTopCoursesByScore(limit = 3) {
+  const groups = {};
+  getPlayableRounds().forEach((r) => {
+    const name = (r.course || '').trim();
+    if (!name) return;
+    (groups[name] = groups[name] || []).push(r.score);
+  });
+  return topByAverage(groups, limit);
+}
+
+export function getTopCompanionsByScore(limit = 3) {
+  const groups = {};
+  getPlayableRounds().forEach((r) => {
+    (r.companions || []).forEach((name) => {
+      if (!name) return;
+      (groups[name] = groups[name] || []).push(r.score);
+    });
+  });
+  return topByAverage(groups, limit);
+}

@@ -1,4 +1,4 @@
-import { getScoreTrend, getStatsSummary, getPlayableRounds } from './state.js';
+import { getScoreTrend, getStatsSummary, getPlayableRounds, getTopCoursesByScore, getTopCompanionsByScore } from './state.js';
 import { formatDateYMDKr, round1, escapeHtml, strToDate } from './utils.js';
 
 const CHART_MIN = 70;
@@ -16,6 +16,11 @@ export function renderStats(container) {
   const parDiffText = summary.avgParDiff !== null
     ? (summary.avgParDiff > 0 ? `+${round1(summary.avgParDiff)}` : round1(summary.avgParDiff))
     : '-';
+
+  const topCourses = getTopCoursesByScore(3);
+  const topCompanions = getTopCompanionsByScore(3);
+  const courseRankHtml = buildRankListHtml(topCourses);
+  const companionRankHtml = buildRankListHtml(topCompanions);
 
   const recordsHtml = allRounds.length
     ? allRounds.map((r) => {
@@ -67,6 +72,12 @@ export function renderStats(container) {
     <div class="chart-wrap">
       <canvas id="trend-canvas" height="220"></canvas>
     </div>
+
+    <div class="section-title">골프장 Best 3</div>
+    <div class="card">${courseRankHtml}</div>
+
+    <div class="section-title">동반자 Best 3</div>
+    <div class="card">${companionRankHtml}</div>
 
     <div class="section-title">전체 기록</div>
     <div class="card">${recordsHtml}</div>
@@ -189,6 +200,19 @@ function drawTrendChart(canvas, trend, average) {
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
+}
+
+function buildRankListHtml(items) {
+  if (!items.length) return `<div class="empty-state">아직 데이터가 없어요</div>`;
+  return items.map((item, i) => `
+    <div class="rank-item">
+      <div class="rank-badge">${i + 1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${escapeHtml(item.name)}</div>
+        <div class="rank-sub">${item.count}라운드</div>
+      </div>
+      <div class="rank-score">${round1(item.average)}</div>
+    </div>`).join('');
 }
 
 function monthLabel(dateStr) {

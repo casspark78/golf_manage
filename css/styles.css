@@ -878,6 +878,39 @@ button, input, select, textarea {
 .stat-tile .value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
 .stat-tile .label { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-top: 4px; }
 
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.rank-item:last-child { border-bottom: none; }
+.rank-badge {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rank-item:nth-child(1) .rank-badge { background: var(--primary); color: #06210F; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-sub { font-size: 12px; color: var(--text-secondary); font-weight: 600; margin-top: 2px; }
+.rank-score { flex-shrink: 0; font-size: 16px; font-weight: 800; color: var(--primary); }
+
 .record-item {
   display: flex;
   align-items: flex-start;
