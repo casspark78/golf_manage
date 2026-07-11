@@ -1023,6 +1023,19 @@ button, input, select, textarea {
   min-height: 14px;
 }
 
+/* Larger text in the schedule add/edit sheet, same field arrangement */
+#schedule-modal-overlay .modal-title { font-size: 20px; }
+#schedule-modal-body .type-toggle button { font-size: 15px; }
+#schedule-modal-body .field label { font-size: 13px; }
+#schedule-modal-body .field input,
+#schedule-modal-body .field select,
+#schedule-modal-body .field textarea,
+#schedule-modal-body .date-display { font-size: 16px; }
+#schedule-modal-body .chip-input-wrap input { font-size: 15px; }
+#schedule-modal-body .chip { font-size: 13px; }
+#schedule-modal-body .field-error { font-size: 12px; }
+#schedule-modal-body .btn { font-size: 16px; }
+
 .toast {
   position: fixed;
   bottom: calc(96px + var(--safe-bottom));
