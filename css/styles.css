@@ -500,10 +500,36 @@ button, input, select, textarea {
   height: 186px;
   overflow: hidden;
   cursor: pointer;
+  position: relative;
   transition: transform 0.1s ease;
 }
 .score-tile:active { transform: scale(0.97); }
 .score-tile.cancelled { border-color: var(--cancel); }
+
+.score-tile.has-photo {
+  background-size: cover;
+  background-position: center;
+  border-color: transparent;
+}
+.score-tile.has-photo.cancelled { border-color: var(--cancel); }
+.score-tile.has-photo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.78) 100%);
+}
+.score-tile.has-photo > * { position: relative; z-index: 1; }
+.score-tile.has-photo .score-tile-month,
+.score-tile.has-photo .score-tile-day,
+.score-tile.has-photo .score-tile-dow,
+.score-tile.has-photo .score-tile-score,
+.score-tile.has-photo .score-tile-course,
+.score-tile.has-photo .score-tile-holes,
+.score-tile.has-photo .score-tile-companions,
+.score-tile.has-photo .score-tile-companions span {
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.55);
+}
 
 .score-tile-top {
   display: flex;
@@ -637,6 +663,25 @@ button, input, select, textarea {
   font-weight: 700;
 }
 .cancel-row-label .emoji { font-size: 18px; }
+
+.photo-preview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  display: block;
+}
+.photo-empty {
+  height: 110px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 600;
+}
 
 .score-entry-table {
   background: var(--bg-card);

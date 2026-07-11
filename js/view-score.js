@@ -1,6 +1,6 @@
-import { getRoundsList, updateRound, getState } from './state.js';
-import { strToDate, todayStr, escapeHtml, fileToBase64 } from './utils.js';
-import { toast } from './components.js';
+import { getRoundsList, updateRound, deleteRound, getState } from './state.js';
+import { strToDate, todayStr, escapeHtml, fileToBase64, resizeImageToDataUrl } from './utils.js';
+import { toast, confirmAction } from './components.js';
 import { scanScorecard } from './gemini.js';
 
 let rerenderFn = null;
@@ -67,8 +67,11 @@ function buildScoreTileHtml(round) {
     ? `<div class="score-tile-companions">${PEOPLE_ICON}<span>${escapeHtml(round.companions.join(', '))}</span></div>`
     : '';
 
+  const photoStyle = round.photo ? ` style="background-image:url('${round.photo}')"` : '';
+  const photoClass = round.photo ? ' has-photo' : '';
+
   return `
-    <div class="score-tile${round.cancelled ? ' cancelled' : ''}" data-id="${round.id}">
+    <div class="score-tile${round.cancelled ? ' cancelled' : ''}${photoClass}" data-id="${round.id}"${photoStyle}>
       <div class="score-tile-top">
         <div>
           <div class="score-tile-month">${d.getMonth() + 1}월</div>
@@ -108,12 +111,15 @@ function openScoreEntryModal(round) {
   const fileInput = document.getElementById('score-entry-file-input');
 
   titleEl.textContent = round.course || '골프장 미정';
+  let pendingPhoto = round.photo || null;
 
   const companionRows = (round.companions || [])
     .map((name) => buildCompanionRow(name, (round.companionScores || []).find((c) => c.name === name)))
     .join('');
 
   body.innerHTML = `
+    <div id="photo-section" style="margin-bottom: 16px;"></div>
+    <input type="file" accept="image/*" id="photo-file-input" class="hidden">
     <div class="cancel-row-card">
       <div class="cancel-row-label"><span class="emoji">🌦</span>라운드 취소 (우천 등)</div>
       <button type="button" class="switch${round.cancelled ? ' on' : ''}" id="entry-cancel-switch"></button>
@@ -137,7 +143,54 @@ function openScoreEntryModal(round) {
       </div>
       ${companionRows}
     </div>
+    <button class="btn btn-danger" id="entry-delete-round" style="width:100%; margin-top:20px;">라운드 삭제</button>
   `;
+
+  const photoFileInput = body.querySelector('#photo-file-input');
+
+  function renderPhotoSection() {
+    const section = body.querySelector('#photo-section');
+    section.innerHTML = pendingPhoto
+      ? `
+        <img src="${pendingPhoto}" class="photo-preview">
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-secondary" id="photo-add-btn">사진 변경</button>
+          <button class="btn btn-danger" id="photo-remove-btn">사진 삭제</button>
+        </div>`
+      : `
+        <div class="photo-empty">사진 없음</div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-secondary" id="photo-add-btn">사진 추가</button>
+        </div>`;
+    section.querySelector('#photo-add-btn').addEventListener('click', () => photoFileInput.click());
+    section.querySelector('#photo-remove-btn')?.addEventListener('click', () => {
+      pendingPhoto = null;
+      renderPhotoSection();
+    });
+  }
+  renderPhotoSection();
+
+  photoFileInput.onchange = async () => {
+    const file = photoFileInput.files?.[0];
+    if (!file) return;
+    try {
+      pendingPhoto = await resizeImageToDataUrl(file);
+      renderPhotoSection();
+    } catch (e) {
+      console.error(e);
+      toast('사진을 불러오지 못했습니다.');
+    } finally {
+      photoFileInput.value = '';
+    }
+  };
+
+  body.querySelector('#entry-delete-round').addEventListener('click', () => {
+    if (!confirmAction('이 라운드 기록을 삭제할까요? 되돌릴 수 없습니다.')) return;
+    deleteRound(round.id);
+    toast('라운드가 삭제되었습니다.');
+    close();
+    rerenderFn && rerenderFn();
+  });
 
   const cancelSwitch = body.querySelector('#entry-cancel-switch');
   cancelSwitch.addEventListener('click', () => cancelSwitch.classList.toggle('on'));
@@ -178,6 +231,7 @@ function openScoreEntryModal(round) {
       eagles,
       cancelled,
       companionScores,
+      photo: pendingPhoto,
     });
     toast('스코어가 저장되었습니다.');
     close();

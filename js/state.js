@@ -49,6 +49,7 @@ export function addRound(data) {
     companionScores: data.companionScores || [],
     cancelled: !!data.cancelled,
     isBlock: !!data.isBlock,
+    photo: data.photo || null,
     createdAt: Date.now(),
   };
   store.rounds.push(round);
