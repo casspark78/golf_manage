@@ -1,4 +1,4 @@
-import { getScoreTrend, getStatsSummary, getPlayableRounds, getTopCoursesByScore, getTopCompanionsByRounds } from './state.js';
+import { getScoreTrend, getStatsSummary, getPlayableRounds, getTopCourses, getTopCompanions } from './state.js';
 import { formatDateYMDKr, round1, escapeHtml, strToDate } from './utils.js';
 
 const CHART_MIN = 70;
@@ -17,10 +17,10 @@ export function renderStats(container) {
     ? (summary.avgParDiff > 0 ? `+${round1(summary.avgParDiff)}` : round1(summary.avgParDiff))
     : '-';
 
-  const topCourses = getTopCoursesByScore(3);
-  const topCompanions = getTopCompanionsByRounds(5);
-  const courseRankHtml = buildRankListHtml(topCourses);
-  const companionRankHtml = buildCompanionRankListHtml(topCompanions);
+  const topCourses = getTopCourses(5);
+  const topCompanions = getTopCompanions(5);
+  const courseRankHtml = buildBest5ColumnHtml(topCourses);
+  const companionRankHtml = buildBest5ColumnHtml(topCompanions);
 
   const recordsHtml = allRounds.length
     ? allRounds.map((r) => {
@@ -73,11 +73,17 @@ export function renderStats(container) {
       <canvas id="trend-canvas" height="220"></canvas>
     </div>
 
-    <div class="section-title">골프장 Best 3</div>
-    <div class="card">${courseRankHtml}</div>
-
-    <div class="section-title">동반자 Best 5</div>
-    <div class="card">${companionRankHtml}</div>
+    <div class="section-title">골프장 · 동반자 Best 5</div>
+    <div class="best5-grid">
+      <div class="best5-col">
+        <div class="best5-col-title">골프장</div>
+        ${courseRankHtml}
+      </div>
+      <div class="best5-col">
+        <div class="best5-col-title">동반자</div>
+        ${companionRankHtml}
+      </div>
+    </div>
 
     <div class="section-title">전체 기록</div>
     <div class="card">${recordsHtml}</div>
@@ -202,31 +208,17 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-function buildRankListHtml(items) {
-  if (!items.length) return `<div class="empty-state">아직 데이터가 없어요</div>`;
-  return items.map((item, i) => `
-    <div class="rank-item">
-      <div class="rank-badge">${i + 1}</div>
-      <div class="rank-info">
-        <div class="rank-name">${escapeHtml(item.name)}</div>
-        <div class="rank-sub">${item.count}라운드</div>
-      </div>
-      <div class="rank-score">${round1(item.average)}</div>
-    </div>`).join('');
-}
-
-function buildCompanionRankListHtml(items) {
-  if (!items.length) return `<div class="empty-state">아직 데이터가 없어요</div>`;
+function buildBest5ColumnHtml(items) {
+  if (!items.length) return `<div class="empty-state" style="padding:16px 4px;">데이터 없음</div>`;
   return items.map((item, i) => {
-    const range = item.min === item.max ? `${item.min}타` : `${item.max}타 ~ ${item.min}타`;
+    const range = item.min === item.max ? `${item.min}타` : `${item.min}~${item.max}타`;
     return `
-    <div class="rank-item">
-      <div class="rank-badge">${i + 1}</div>
-      <div class="rank-info">
-        <div class="rank-name">${escapeHtml(item.name)}</div>
-        <div class="rank-sub">${range}</div>
+    <div class="best5-row">
+      <div class="best5-rank${i === 0 ? ' top' : ''}">${i + 1}</div>
+      <div class="best5-info">
+        <div class="best5-name">${escapeHtml(item.name)}</div>
+        <div class="best5-sub">${item.count}회 · 평균 ${round1(item.average)} (${range})</div>
       </div>
-      <div class="rank-score">${item.count}회</div>
     </div>`;
   }).join('');
 }

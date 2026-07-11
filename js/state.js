@@ -165,28 +165,30 @@ export function getScoreTrend() {
     .map((r) => ({ date: r.date, score: r.score, par: r.par }));
 }
 
-function topByAverage(groups, limit) {
+function topByRounds(groups, limit) {
   return Object.entries(groups)
     .map(([name, scores]) => ({
       name,
       count: scores.length,
       average: scores.reduce((a, b) => a + b, 0) / scores.length,
+      min: Math.min(...scores),
+      max: Math.max(...scores),
     }))
-    .sort((a, b) => a.average - b.average)
+    .sort((a, b) => b.count - a.count)
     .slice(0, limit);
 }
 
-export function getTopCoursesByScore(limit = 3) {
+export function getTopCourses(limit = 5) {
   const groups = {};
   getPlayableRounds().forEach((r) => {
     const name = (r.course || '').trim();
     if (!name) return;
     (groups[name] = groups[name] || []).push(r.score);
   });
-  return topByAverage(groups, limit);
+  return topByRounds(groups, limit);
 }
 
-export function getTopCompanionsByRounds(limit = 5) {
+export function getTopCompanions(limit = 5) {
   const groups = {};
   getPlayableRounds().forEach((r) => {
     (r.companions || []).forEach((name) => {
@@ -194,13 +196,5 @@ export function getTopCompanionsByRounds(limit = 5) {
       (groups[name] = groups[name] || []).push(r.score);
     });
   });
-  return Object.entries(groups)
-    .map(([name, scores]) => ({
-      name,
-      count: scores.length,
-      min: Math.min(...scores),
-      max: Math.max(...scores),
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+  return topByRounds(groups, limit);
 }
