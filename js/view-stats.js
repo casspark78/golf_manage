@@ -1,4 +1,4 @@
-import { getScoreTrend, getStatsSummary, getPlayableRounds, getTopCoursesByScore, getTopCompanionsByScore } from './state.js';
+import { getScoreTrend, getStatsSummary, getPlayableRounds, getTopCoursesByScore, getTopCompanionsByRounds } from './state.js';
 import { formatDateYMDKr, round1, escapeHtml, strToDate } from './utils.js';
 
 const CHART_MIN = 70;
@@ -18,9 +18,9 @@ export function renderStats(container) {
     : '-';
 
   const topCourses = getTopCoursesByScore(3);
-  const topCompanions = getTopCompanionsByScore(3);
+  const topCompanions = getTopCompanionsByRounds(5);
   const courseRankHtml = buildRankListHtml(topCourses);
-  const companionRankHtml = buildRankListHtml(topCompanions);
+  const companionRankHtml = buildCompanionRankListHtml(topCompanions);
 
   const recordsHtml = allRounds.length
     ? allRounds.map((r) => {
@@ -76,7 +76,7 @@ export function renderStats(container) {
     <div class="section-title">골프장 Best 3</div>
     <div class="card">${courseRankHtml}</div>
 
-    <div class="section-title">동반자 Best 3</div>
+    <div class="section-title">동반자 Best 5</div>
     <div class="card">${companionRankHtml}</div>
 
     <div class="section-title">전체 기록</div>
@@ -213,6 +213,22 @@ function buildRankListHtml(items) {
       </div>
       <div class="rank-score">${round1(item.average)}</div>
     </div>`).join('');
+}
+
+function buildCompanionRankListHtml(items) {
+  if (!items.length) return `<div class="empty-state">아직 데이터가 없어요</div>`;
+  return items.map((item, i) => {
+    const range = item.min === item.max ? `${item.min}타` : `${item.max}타 ~ ${item.min}타`;
+    return `
+    <div class="rank-item">
+      <div class="rank-badge">${i + 1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${escapeHtml(item.name)}</div>
+        <div class="rank-sub">${range}</div>
+      </div>
+      <div class="rank-score">${item.count}회</div>
+    </div>`;
+  }).join('');
 }
 
 function monthLabel(dateStr) {
