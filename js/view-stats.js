@@ -19,8 +19,8 @@ export function renderStats(container) {
 
   const topCourses = getTopCourses(5);
   const topCompanions = getTopCompanions(5);
-  const courseRankHtml = buildBest5ColumnHtml(topCourses);
-  const companionRankHtml = buildBest5ColumnHtml(topCompanions);
+  const courseRankHtml = buildBest5ListHtml(topCourses);
+  const companionRankHtml = buildBest5ListHtml(topCompanions);
 
   const recordsHtml = allRounds.length
     ? allRounds.map((r) => {
@@ -73,17 +73,11 @@ export function renderStats(container) {
       <canvas id="trend-canvas" height="220"></canvas>
     </div>
 
-    <div class="section-title">골프장 · 동반자 Best 5</div>
-    <div class="best5-grid">
-      <div class="best5-col">
-        <div class="best5-col-title">골프장</div>
-        ${courseRankHtml}
-      </div>
-      <div class="best5-col">
-        <div class="best5-col-title">동반자</div>
-        ${companionRankHtml}
-      </div>
-    </div>
+    <div class="section-title">골프장 Best 5</div>
+    <div class="card">${courseRankHtml}</div>
+
+    <div class="section-title">동반자 Best 5</div>
+    <div class="card">${companionRankHtml}</div>
 
     <div class="section-title">전체 기록</div>
     <div class="card">${recordsHtml}</div>
@@ -208,7 +202,7 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-function buildBest5ColumnHtml(items) {
+function buildBest5ListHtml(items) {
   if (!items.length) return `<div class="empty-state" style="padding:16px 4px;">데이터 없음</div>`;
   return items.map((item, i) => {
     const range = item.min === item.max ? `${item.min}타` : `${item.min}~${item.max}타`;
