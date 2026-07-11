@@ -143,8 +143,8 @@ function openScheduleModal(dateStr, existing) {
     <div id="round-only-fields">
       <div class="field-row">
         <div class="field">
-          <label>골프장</label>
-          <input type="text" id="f-course" placeholder="골프장 이름" value="${escapeHtml(existing?.course || '')}">
+          <label>골프장 <span style="color:var(--text-tertiary); font-weight:500;">(미정 가능)</span></label>
+          <input type="text" id="f-course" placeholder="나중에 정해지면 입력" value="${escapeHtml(existing?.course || '')}">
         </div>
         <div class="field">
           <label>홀수</label>
@@ -232,10 +232,6 @@ function openScheduleModal(dateStr, existing) {
       payload.holes = Number(body.querySelector('#f-holes').value);
       payload.par = Number(body.querySelector('#f-par').value) || 72;
       payload.companions = companions;
-      if (!payload.course) {
-        toast('골프장 이름을 입력해주세요.');
-        return;
-      }
     } else {
       payload.course = '';
       payload.companions = [];
