@@ -1,9 +1,9 @@
-import { subscribe, getState, updateSettings } from './state.js';
+import { subscribe, getState, updateSettings, getRoundsList, importRounds } from './state.js';
 import { renderHome } from './view-home.js';
 import { renderSchedule, bindScheduleModalChrome } from './view-schedule.js';
 import { renderScore } from './view-score.js';
 import { renderStats } from './view-stats.js';
-import { openModal, closeModal, toast } from './components.js';
+import { openModal, closeModal, toast, confirmAction } from './components.js';
 
 const SUN_PATH = `<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
 const MOON_PATH = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
@@ -84,12 +84,60 @@ function setupSettingsModal() {
           <div class="desc">모든 기록은 이 기기의 브라우저에만 저장됩니다 (오프라인 사용 가능)</div>
         </div>
       </div>
+
+      <div class="settings-row" style="margin-top:4px; border-bottom:none; padding-bottom:0;">
+        <div>
+          <div class="label">데이터 가져오기 / 내보내기</div>
+          <div class="desc">JSON 파일로 기록을 백업하거나 불러올 수 있습니다</div>
+        </div>
+      </div>
+      <div class="score-card-actions" style="margin-top:10px;">
+        <button class="btn btn-secondary" id="export-data-btn">내보내기</button>
+        <button class="btn btn-secondary" id="import-data-btn">가져오기</button>
+      </div>
+      <input type="file" accept="application/json" id="import-file-input" class="hidden">
     `;
     body.querySelector('#save-key-btn').addEventListener('click', () => {
       const key = body.querySelector('#gemini-key-input').value.trim();
       updateSettings({ geminiApiKey: key });
       toast('API 키가 저장되었습니다.');
       closeModal(overlay);
+    });
+
+    body.querySelector('#export-data-btn').addEventListener('click', () => {
+      const rounds = getRoundsList();
+      const blob = new Blob([JSON.stringify(rounds, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const today = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `haksu-golf-backup-${today}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('데이터를 내보냈습니다.');
+    });
+
+    const importInput = body.querySelector('#import-file-input');
+    body.querySelector('#import-data-btn').addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', async () => {
+      const file = importInput.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const merge = confirmAction(
+          '기존 기록과 날짜가 겹치지 않는 항목만 추가합니다.\n계속할까요?'
+        );
+        if (!merge) return;
+        const { added, skipped } = importRounds(data, 'merge');
+        toast(`${added}건 추가됨${skipped ? `, ${skipped}건 중복으로 건너뜀` : ''}`, 3200);
+        closeModal(overlay);
+      } catch (e) {
+        console.error(e);
+        toast('가져오기에 실패했습니다. 파일 형식을 확인해주세요.', 3200);
+      } finally {
+        importInput.value = '';
+      }
     });
   }
 

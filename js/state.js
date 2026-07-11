@@ -73,6 +73,37 @@ export function deleteRound(id) {
   persistRounds();
 }
 
+/**
+ * Bulk import rounds (e.g. from a JSON backup or converted spreadsheet export).
+ * mode: 'merge' (default) appends imported rounds whose date doesn't already
+ * exist locally, skipping the rest; 'replace' wipes existing rounds first.
+ * Returns { added, skipped }.
+ */
+export function importRounds(newRounds, mode = 'merge') {
+  if (!Array.isArray(newRounds)) throw new Error('가져올 데이터 형식이 올바르지 않습니다.');
+
+  if (mode === 'replace') {
+    store.rounds = newRounds.map((r) => ({ ...r, id: r.id || uid() }));
+    persistRounds();
+    return { added: store.rounds.length, skipped: 0 };
+  }
+
+  const existingDates = new Set(store.rounds.map((r) => r.date));
+  let added = 0;
+  let skipped = 0;
+  newRounds.forEach((r) => {
+    if (existingDates.has(r.date)) {
+      skipped += 1;
+      return;
+    }
+    existingDates.add(r.date);
+    store.rounds.push({ ...r, id: r.id || uid() });
+    added += 1;
+  });
+  persistRounds();
+  return { added, skipped };
+}
+
 export function toggleCancelled(id) {
   const r = getRoundById(id);
   if (!r) return;
