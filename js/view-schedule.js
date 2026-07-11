@@ -99,7 +99,7 @@ function buildScheduleCardHtml(round) {
         <div class="schedule-card-icon">${CARD_ICON}</div>
       </div>
       <div class="schedule-card-divider"></div>
-      <div class="schedule-card-course">${escapeHtml(title)}${tag}</div>
+      <div class="schedule-card-course"><span class="schedule-card-course-text">${escapeHtml(title)}</span>${tag}</div>
       ${holesLine}
       ${companionsRow}
     </div>`;

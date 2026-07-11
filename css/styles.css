@@ -364,6 +364,8 @@ button, input, select, textarea {
   border: 1.5px solid var(--primary);
   border-radius: var(--radius-md);
   padding: 14px;
+  height: 172px;
+  overflow: hidden;
   cursor: pointer;
   transition: transform 0.1s ease;
 }
@@ -424,9 +426,19 @@ button, input, select, textarea {
   font-weight: 700;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 4px;
+  min-width: 0;
 }
+
+.schedule-card-course-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.schedule-card-course .tag { flex-shrink: 0; }
 
 .schedule-card-holes {
   font-size: 12px;
@@ -441,6 +453,7 @@ button, input, select, textarea {
   gap: 6px;
   margin-top: 8px;
   color: var(--text-secondary);
+  min-width: 0;
 }
 .schedule-card-companions svg { width: 15px; height: 15px; flex-shrink: 0; }
 .schedule-card-companions span {
@@ -449,6 +462,8 @@ button, input, select, textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
 /* Score view */
