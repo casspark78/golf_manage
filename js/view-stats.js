@@ -90,7 +90,6 @@ function drawTrendChart(canvas, trend, average) {
   const styles = getComputedStyle(document.documentElement);
   const primary = styles.getPropertyValue('--primary').trim() || '#2DC96E';
   const textSecondary = styles.getPropertyValue('--text-secondary').trim() || '#888';
-  const border = styles.getPropertyValue('--border').trim() || '#333';
   const avgColor = styles.getPropertyValue('--cancel').trim() || '#FF9500';
 
   if (!trend.length) {
@@ -114,19 +113,13 @@ function drawTrendChart(canvas, trend, average) {
   const xFor = (i) => padL + (trend.length === 1 ? plotW / 2 : (i / (trend.length - 1)) * plotW);
   const yFor = (v) => padT + plotH - ((clamp(v, min, max) - min) / (max - min)) * plotH;
 
-  // grid lines every 10, from min to max
-  ctx.strokeStyle = border;
-  ctx.lineWidth = 1;
+  // y-axis labels every 10, from min to max (no grid lines, kept simple)
   ctx.fillStyle = textSecondary;
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'right';
   const step = 10;
   for (let v = min; v <= max; v += step) {
     const y = yFor(v);
-    ctx.beginPath();
-    ctx.moveTo(padL, y);
-    ctx.lineTo(cssWidth - padR, y);
-    ctx.stroke();
     ctx.fillText(v.toString(), padL - 6, y + 3);
   }
 
