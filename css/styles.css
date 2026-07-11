@@ -139,7 +139,7 @@ button, input, select, textarea {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-secondary);
-  margin: 22px 4px 10px;
+  margin: 18px 4px 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -172,7 +172,7 @@ button, input, select, textarea {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 14px 10px;
+  padding: 12px 10px;
   text-align: center;
 }
 
@@ -192,10 +192,10 @@ button, input, select, textarea {
 }
 
 .next-round-card {
-  margin-top: 12px;
+  margin-top: 10px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 16px;
   color: #06210F;
   position: relative;
   overflow: hidden;
@@ -266,11 +266,11 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   gap: 12px;
 }
 

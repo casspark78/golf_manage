@@ -5,7 +5,7 @@ import { getDailyForecast } from './weather.js';
 export function renderHome(container, { goToTab }) {
   const summary = getStatsSummary();
   const next = getNextRound();
-  const recent = getRecentResults(5);
+  const recent = getRecentResults(4);
 
   const bestText = summary.best !== null ? summary.best : '-';
   const avgText = summary.average !== null ? round1(summary.average) : '-';
