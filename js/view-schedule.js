@@ -134,7 +134,7 @@ function openScheduleModal(dateStr, existing) {
       <button type="button" data-type="round" class="${type === 'round' ? 'active' : ''}">라운드</button>
       <button type="button" data-type="block" class="${type === 'block' ? 'active' : ''}">블럭</button>
     </div>
-    <div class="field-row" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="field-row" style="grid-template-columns: 1fr 0.6fr 1.7fr;">
       <div class="field">
         <label>날짜</label>
         <input type="date" id="f-date" value="${existing?.date || dateStr}">
@@ -149,15 +149,6 @@ function openScheduleModal(dateStr, existing) {
       </div>
     </div>
     <div id="round-only-fields">
-      <div class="field-row">
-        <div class="field">
-          <label>홀수</label>
-          <select id="f-holes">
-            <option value="18" ${!existing || existing.holes === 18 ? 'selected' : ''}>18홀</option>
-            <option value="9" ${existing?.holes === 9 ? 'selected' : ''}>9홀</option>
-          </select>
-        </div>
-      </div>
       <div class="field" style="margin-top:12px;">
         <label>동반자 <span style="color:var(--danger)">*필수</span></label>
         <div id="companion-chip-container"></div>
@@ -231,7 +222,7 @@ function openScheduleModal(dateStr, existing) {
 
     if (type === 'round') {
       payload.course = body.querySelector('#f-course').value.trim();
-      payload.holes = Number(body.querySelector('#f-holes').value);
+      payload.holes = existing?.holes ?? 18;
       payload.par = Number(body.querySelector('#f-par').value) || 72;
       payload.companions = companions;
     } else {
