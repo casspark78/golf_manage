@@ -771,6 +771,7 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  min-width: 0;
 }
 .field label {
   font-size: 12px;
@@ -786,6 +787,8 @@ button, input, select, textarea {
   font-weight: 600;
   color: var(--text-primary);
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;

@@ -134,7 +134,7 @@ function openScheduleModal(dateStr, existing) {
       <button type="button" data-type="round" class="${type === 'round' ? 'active' : ''}">라운드</button>
       <button type="button" data-type="block" class="${type === 'block' ? 'active' : ''}">블럭</button>
     </div>
-    <div class="field-row" style="grid-template-columns: 1fr 0.6fr 1.7fr;">
+    <div class="field-row" style="grid-template-columns: 1.15fr 0.55fr 1.6fr;">
       <div class="field">
         <label>날짜</label>
         <input type="date" id="f-date" value="${existing?.date || dateStr}">
