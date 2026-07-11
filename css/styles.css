@@ -244,11 +244,23 @@ button, input, select, textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   margin-bottom: 8px;
+  gap: 12px;
 }
 
+.result-row .info { min-width: 0; flex: 1; }
 .result-row .info .date { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
 .result-row .info .course { font-size: 15px; font-weight: 700; margin-top: 2px; }
+.result-row .info .companions {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .result-row .score-badge {
+  flex-shrink: 0;
   font-size: 18px;
   font-weight: 800;
   color: var(--primary);

@@ -38,6 +38,7 @@ export function renderHome(container, { goToTab }) {
           <div class="info">
             <div class="date">${formatDateKr(r.date)}</div>
             <div class="course">${escapeHtml(r.course || '골프장 미정')}</div>
+            ${r.companions?.length ? `<div class="companions">${escapeHtml(r.companions.join(', '))}</div>` : ''}
           </div>
           <div class="score-badge">${r.score}<span class="par-diff">${diffText}</span></div>
         </div>`;
