@@ -13,7 +13,7 @@ export function renderScore(container) {
 
   const today = todayStr();
   const rounds = getRoundsList()
-    .filter((r) => !r.isBlock && r.date <= today)
+    .filter((r) => !r.isBlock && !r.cancelled && r.date <= today)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   if (!rounds.length) {
