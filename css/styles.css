@@ -802,6 +802,34 @@ button, input, select, textarea {
   margin: 0;
 }
 
+/* Native date input is invisible but still receives taps; a compact custom
+   label underneath shows the value so we control exactly what's displayed
+   (no year), avoiding overflow from the OS's own date formatting. */
+.date-field-wrap {
+  position: relative;
+  min-width: 0;
+}
+.date-field-wrap input[type="date"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+}
+.date-field-wrap .date-display {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 11px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
 .btn-row {
   display: flex;
   gap: 8px;

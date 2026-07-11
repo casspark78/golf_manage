@@ -1,5 +1,5 @@
 import { getRoundsList, addRound, updateRound, deleteRound, findRoundsByDate } from './state.js';
-import { strToDate, todayStr, escapeHtml } from './utils.js';
+import { strToDate, todayStr, escapeHtml, formatMonthDayKr } from './utils.js';
 import { openModal, closeModal, createChipInput, toast, confirmAction } from './components.js';
 
 let viewMonthKey; // 'YYYY-MM'
@@ -134,10 +134,13 @@ function openScheduleModal(dateStr, existing) {
       <button type="button" data-type="round" class="${type === 'round' ? 'active' : ''}">라운드</button>
       <button type="button" data-type="block" class="${type === 'block' ? 'active' : ''}">블럭</button>
     </div>
-    <div class="field-row" style="grid-template-columns: 1.15fr 0.55fr 1.6fr;">
+    <div class="field-row" style="grid-template-columns: 0.85fr 0.55fr 1.6fr;">
       <div class="field">
         <label>날짜</label>
-        <input type="date" id="f-date" value="${existing?.date || dateStr}">
+        <div class="date-field-wrap">
+          <input type="date" id="f-date" value="${existing?.date || dateStr}">
+          <div class="date-display" id="f-date-display">${formatMonthDayKr(existing?.date || dateStr)}</div>
+        </div>
       </div>
       <div class="field round-only-inline">
         <label>파(Par)</label>
@@ -181,6 +184,12 @@ function openScheduleModal(dateStr, existing) {
     });
   }
   applyTypeUI();
+
+  const dateInput = body.querySelector('#f-date');
+  const dateDisplay = body.querySelector('#f-date-display');
+  dateInput.addEventListener('change', () => {
+    if (dateInput.value) dateDisplay.textContent = formatMonthDayKr(dateInput.value);
+  });
 
   body.querySelectorAll('.type-toggle button').forEach((btn) => {
     btn.addEventListener('click', () => {
