@@ -134,30 +134,28 @@ function openScheduleModal(dateStr, existing) {
       <button type="button" data-type="round" class="${type === 'round' ? 'active' : ''}">라운드</button>
       <button type="button" data-type="block" class="${type === 'block' ? 'active' : ''}">블럭</button>
     </div>
-    <div class="field-row" style="grid-template-columns: 1fr;">
+    <div class="field-row" style="grid-template-columns: 1fr 1fr 1fr;">
       <div class="field">
         <label>날짜</label>
         <input type="date" id="f-date" value="${existing?.date || dateStr}">
       </div>
+      <div class="field round-only-inline">
+        <label>파(Par)</label>
+        <input type="number" id="f-par" placeholder="72" value="${existing?.par ?? 72}">
+      </div>
+      <div class="field round-only-inline">
+        <label>골프장</label>
+        <input type="text" id="f-course" placeholder="미정 가능" value="${escapeHtml(existing?.course || '')}">
+      </div>
     </div>
     <div id="round-only-fields">
       <div class="field-row">
-        <div class="field">
-          <label>골프장 <span style="color:var(--text-tertiary); font-weight:500;">(미정 가능)</span></label>
-          <input type="text" id="f-course" placeholder="나중에 정해지면 입력" value="${escapeHtml(existing?.course || '')}">
-        </div>
         <div class="field">
           <label>홀수</label>
           <select id="f-holes">
             <option value="18" ${!existing || existing.holes === 18 ? 'selected' : ''}>18홀</option>
             <option value="9" ${existing?.holes === 9 ? 'selected' : ''}>9홀</option>
           </select>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label>파(Par)</label>
-          <input type="number" id="f-par" placeholder="72" value="${existing?.par ?? 72}">
         </div>
       </div>
       <div class="field" style="margin-top:12px;">
@@ -168,7 +166,7 @@ function openScheduleModal(dateStr, existing) {
     </div>
     <div class="field" style="margin-top:12px;">
       <label>메모</label>
-      <textarea id="f-memo" placeholder="메모 (선택)">${escapeHtml(existing?.memo || '')}</textarea>
+      <textarea id="f-memo" placeholder="메모 (선택)" rows="5">${escapeHtml(existing?.memo || '')}</textarea>
     </div>
     <div class="field-error" id="date-error"></div>
     <div class="btn-row" style="margin-top:18px;">
@@ -184,8 +182,12 @@ function openScheduleModal(dateStr, existing) {
   );
 
   const roundOnlyFields = body.querySelector('#round-only-fields');
+  const roundOnlyInline = body.querySelectorAll('.round-only-inline');
   function applyTypeUI() {
     roundOnlyFields.style.display = type === 'round' ? '' : 'none';
+    roundOnlyInline.forEach((el) => {
+      el.style.display = type === 'round' ? '' : 'none';
+    });
   }
   applyTypeUI();
 

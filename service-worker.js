@@ -1,4 +1,4 @@
-const CACHE_NAME = 'haksu-golf-v15';
+const CACHE_NAME = 'haksu-golf-v16';
 const APP_SHELL = [
   './',
   './index.html',
