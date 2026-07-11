@@ -31,7 +31,24 @@ export function findRoundsByDate(dateStr, excludeId) {
 
 function persistRounds() {
   saveRounds(store.rounds);
+  store.settings.lastDataChangeAt = Date.now();
+  saveSettings(store.settings);
   notify();
+}
+
+export function markExported() {
+  store.settings.lastExportAt = Date.now();
+  saveSettings(store.settings);
+  notify();
+}
+
+export function getBackupStatus() {
+  const { lastDataChangeAt, lastExportAt } = store.settings;
+  if (!lastDataChangeAt) return { needsExport: false };
+  if (!lastExportAt || lastExportAt < lastDataChangeAt) {
+    return { needsExport: true, sinceDate: lastDataChangeAt };
+  }
+  return { needsExport: false };
 }
 
 export function addRound(data) {

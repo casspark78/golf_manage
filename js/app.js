@@ -1,4 +1,4 @@
-import { subscribe, getState, updateSettings, getRoundsList, importRounds } from './state.js';
+import { subscribe, getState, updateSettings, getRoundsList, importRounds, markExported } from './state.js';
 import { renderHome } from './view-home.js';
 import { renderSchedule, bindScheduleModalChrome } from './view-schedule.js';
 import { renderScore } from './view-score.js';
@@ -146,6 +146,7 @@ function setupSettingsModal() {
       a.download = `haksu-golf-backup-${today}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      markExported();
       toast('데이터를 내보냈습니다.');
     });
 

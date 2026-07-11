@@ -1,5 +1,5 @@
-import { getNextRound, getRecentResults, getStatsSummary, getState } from './state.js';
-import { formatDateKr, diffDays, todayStr, round1, escapeHtml } from './utils.js';
+import { getNextRound, getRecentResults, getStatsSummary, getState, getBackupStatus } from './state.js';
+import { formatDateKr, diffDays, todayStr, round1, escapeHtml, dateToStr } from './utils.js';
 import { getDailyForecast } from './weather.js';
 
 export function renderHome(container, { goToTab }) {
@@ -79,13 +79,33 @@ export function renderHome(container, { goToTab }) {
       <button class="action-link" id="home-go-stats">전체보기</button>
     </div>
     ${recentBlock}
+
+    ${backupBannerHtml()}
   `;
 
   container.querySelector('#home-go-stats')?.addEventListener('click', () => goToTab('stats'));
+  container.querySelector('#backup-banner')?.addEventListener('click', () => {
+    document.getElementById('settings-btn').click();
+  });
 
   if (next) {
     loadNextRoundWeather(container, next.date);
   }
+}
+
+function backupBannerHtml() {
+  const status = getBackupStatus();
+  if (!status.needsExport) return '';
+  const sinceDateStr = dateToStr(new Date(status.sinceDate));
+  return `
+    <div class="backup-banner" id="backup-banner">
+      <span class="icon">⚠️</span>
+      <div class="text">
+        <div class="title">백업이 필요해요</div>
+        <div class="desc">${formatDateKr(sinceDateStr)} 이후 변경된 데이터가 아직 내보내기 되지 않았어요</div>
+      </div>
+      <span class="chevron">›</span>
+    </div>`;
 }
 
 async function loadNextRoundWeather(container, dateStr) {

@@ -262,6 +262,28 @@ button, input, select, textarea {
   font-size: 14px;
 }
 
+.backup-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 149, 0, 0.12);
+  border: 1px solid rgba(255, 149, 0, 0.35);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.backup-banner .icon { font-size: 18px; flex-shrink: 0; }
+.backup-banner .text { flex: 1; min-width: 0; }
+.backup-banner .title { font-size: 13px; font-weight: 700; color: var(--cancel); }
+.backup-banner .desc {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.backup-banner .chevron { font-size: 20px; color: var(--cancel); flex-shrink: 0; }
+
 .result-row {
   display: flex;
   align-items: center;
