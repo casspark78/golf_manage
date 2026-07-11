@@ -13,11 +13,12 @@ const PEOPLE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export function renderSchedule(container) {
   rerenderFn = () => renderSchedule(container);
 
-  const rounds = getRoundsList();
-  const todayKey = todayStr().slice(0, 7);
+  const today = todayStr();
+  const todayKey = today.slice(0, 7);
+  const upcomingRounds = getRoundsList().filter((r) => r.date >= today);
 
   const countByMonth = {};
-  rounds.forEach((r) => {
+  upcomingRounds.forEach((r) => {
     const k = r.date.slice(0, 7);
     countByMonth[k] = (countByMonth[k] || 0) + 1;
   });
@@ -41,7 +42,7 @@ export function renderSchedule(container) {
       </button>`;
   }).join('');
 
-  const monthRounds = rounds
+  const monthRounds = upcomingRounds
     .filter((r) => r.date.slice(0, 7) === viewMonthKey)
     .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -69,7 +70,7 @@ export function renderSchedule(container) {
   });
   container.querySelectorAll('.schedule-card').forEach((card) => {
     card.addEventListener('click', () => {
-      const round = rounds.find((r) => r.id === card.dataset.id);
+      const round = monthRounds.find((r) => r.id === card.dataset.id);
       if (round) openScheduleModal(round.date, round);
     });
   });
