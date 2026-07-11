@@ -91,7 +91,7 @@ function setupSettingsModal() {
           <div class="desc">JSON 파일로 기록을 백업하거나 불러올 수 있습니다</div>
         </div>
       </div>
-      <div class="score-card-actions" style="margin-top:10px;">
+      <div class="btn-row" style="margin-top:10px;">
         <button class="btn btn-secondary" id="export-data-btn">내보내기</button>
         <button class="btn btn-secondary" id="import-data-btn">가져오기</button>
       </div>

@@ -25,10 +25,6 @@ export function getRoundsList() {
   return store.rounds;
 }
 
-export function getRoundById(id) {
-  return store.rounds.find((r) => r.id === id);
-}
-
 export function findRoundsByDate(dateStr, excludeId) {
   return store.rounds.filter((r) => r.date === dateStr && r.id !== excludeId);
 }
@@ -102,12 +98,6 @@ export function importRounds(newRounds, mode = 'merge') {
   });
   persistRounds();
   return { added, skipped };
-}
-
-export function toggleCancelled(id) {
-  const r = getRoundById(id);
-  if (!r) return;
-  updateRound(id, { cancelled: !r.cancelled });
 }
 
 export function updateSettings(patch) {

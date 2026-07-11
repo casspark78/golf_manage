@@ -91,6 +91,22 @@
     </div>
   </div>
 
+  <!-- Score Entry Fullscreen Modal -->
+  <div class="fullscreen-modal" id="score-entry-overlay">
+    <div class="score-entry-navbar">
+      <button class="nav-text-btn" id="score-entry-close">취소</button>
+      <div class="score-entry-title" id="score-entry-title">골프장</div>
+      <div class="score-entry-navbar-right">
+        <button class="icon-btn-plain" id="score-entry-scan-btn" aria-label="스코어카드 스캔">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        <button class="nav-text-btn" id="score-entry-save">저장</button>
+      </div>
+    </div>
+    <div class="score-entry-body" id="score-entry-body"></div>
+    <input type="file" accept="image/*" capture="environment" id="score-entry-file-input" class="hidden">
+  </div>
+
 </div>
 
 <script type="module" src="js/app.js"></script>

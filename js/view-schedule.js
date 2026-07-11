@@ -171,7 +171,7 @@ function openScheduleModal(dateStr, existing) {
       <textarea id="f-memo" placeholder="메모 (선택)">${escapeHtml(existing?.memo || '')}</textarea>
     </div>
     <div class="field-error" id="date-error"></div>
-    <div class="score-card-actions" style="margin-top:18px;">
+    <div class="btn-row" style="margin-top:18px;">
       ${existing ? '<button class="btn btn-danger" id="f-delete">삭제</button>' : ''}
       <button class="btn btn-primary" id="f-save">저장</button>
     </div>
