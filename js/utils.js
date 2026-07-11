@@ -36,14 +36,6 @@ export function formatDateKr(dateStr) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${week[d.getDay()]})`;
 }
 
-export function formatMonthKr(year, month) {
-  return `${year}년 ${month + 1}월`;
-}
-
-export function isSameMonth(dateStr, year, month) {
-  const d = strToDate(dateStr);
-  return d.getFullYear() === year && d.getMonth() === month;
-}
 
 export function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));

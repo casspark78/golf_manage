@@ -1,110 +1,107 @@
 import { getRoundsList, addRound, updateRound, deleteRound, findRoundsByDate } from './state.js';
-import { dateToStr, strToDate, todayStr, formatMonthKr, escapeHtml } from './utils.js';
+import { strToDate, todayStr, escapeHtml } from './utils.js';
 import { openModal, closeModal, createChipInput, toast, confirmAction } from './components.js';
 
-let viewYear, viewMonth; // month is 0-indexed
+let viewMonthKey; // 'YYYY-MM'
 let rerenderFn = null;
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
-function initMonthIfNeeded() {
-  if (viewYear === undefined) {
-    const now = new Date();
-    viewYear = now.getFullYear();
-    viewMonth = now.getMonth();
-  }
-}
+const CARD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>`;
+const PEOPLE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 
 export function renderSchedule(container) {
-  initMonthIfNeeded();
   rerenderFn = () => renderSchedule(container);
 
   const rounds = getRoundsList();
-  const today = todayStr();
+  const todayKey = todayStr().slice(0, 7);
 
-  const firstOfMonth = new Date(viewYear, viewMonth, 1);
-  const startDow = firstOfMonth.getDay();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
-
-  const cells = [];
-  for (let i = 0; i < startDow; i++) {
-    const dayNum = daysInPrevMonth - startDow + 1 + i;
-    cells.push({ dayNum, dim: true, dateStr: null });
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = dateToStr(new Date(viewYear, viewMonth, d));
-    cells.push({ dayNum: d, dim: false, dateStr });
-  }
-  while (cells.length % 7 !== 0) {
-    const idx = cells.length - (startDow + daysInMonth);
-    cells.push({ dayNum: idx + 1, dim: true, dateStr: null });
-  }
-
-  const roundsByDate = {};
+  const countByMonth = {};
   rounds.forEach((r) => {
-    (roundsByDate[r.date] = roundsByDate[r.date] || []).push(r);
+    const k = r.date.slice(0, 7);
+    countByMonth[k] = (countByMonth[k] || 0) + 1;
   });
+  const monthKeys = Array.from(new Set([...Object.keys(countByMonth), todayKey])).sort();
 
-  const cellsHtml = cells.map((c) => {
-    if (!c.dateStr) {
-      return `<div class="cal-cell empty other-dim"><span class="day-num">${c.dayNum}</span></div>`;
-    }
-    const dayRounds = roundsByDate[c.dateStr] || [];
-    const isToday = c.dateStr === today;
-    const dots = dayRounds.map((r) => {
-      const cls = r.cancelled ? 'cancelled' : r.isBlock ? 'block' : 'round';
-      return `<span class="cal-dot ${cls}"></span>`;
-    }).join('');
+  if (!viewMonthKey || !monthKeys.includes(viewMonthKey)) {
+    viewMonthKey = monthKeys.find((k) => k >= todayKey) || monthKeys[monthKeys.length - 1];
+  }
+
+  const multiYear = new Set(monthKeys.map((k) => k.slice(0, 4))).size > 1;
+
+  const pillsHtml = monthKeys.map((k) => {
+    const year = k.slice(2, 4);
+    const month = Number(k.slice(5, 7));
+    const count = countByMonth[k] || 0;
+    const label = multiYear ? `'${year}.${month}월` : `${month}월`;
     return `
-      <div class="cal-cell${isToday ? ' today' : ''}" data-date="${c.dateStr}">
-        <span class="day-num">${c.dayNum}</span>
-        <span class="dot-wrap">${dots}</span>
-      </div>`;
+      <button class="month-pill${k === viewMonthKey ? ' active' : ''}" data-key="${k}">
+        <span class="pill-month">${label}</span>
+        <span class="pill-count">${count}건</span>
+      </button>`;
   }).join('');
 
+  const monthRounds = rounds
+    .filter((r) => r.date.slice(0, 7) === viewMonthKey)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const cardsHtml = monthRounds.length
+    ? monthRounds.map((r) => buildScheduleCardHtml(r)).join('')
+    : `<div class="empty-state" style="grid-column: 1 / -1;">이 달에는 일정이 없어요</div>`;
+
   container.innerHTML = `
-    <div class="month-nav">
-      <button class="icon-btn" id="prev-month-btn" aria-label="이전 달">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-      <div class="month-label">${formatMonthKr(viewYear, viewMonth)}</div>
-      <button class="icon-btn" id="next-month-btn" aria-label="다음 달">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
+    <div class="schedule-header-row">
+      <div class="schedule-title">라운드 일정</div>
+      <button class="fab-inline" id="add-schedule-fab" aria-label="일정 추가">+</button>
     </div>
-    <div class="cal-grid">
-      ${DOW.map((d) => `<div class="cal-dow">${d}</div>`).join('')}
-      ${cellsHtml}
-    </div>
-    <div class="legend-row">
-      <span class="legend-item"><span class="cal-dot round"></span>라운드</span>
-      <span class="legend-item"><span class="cal-dot block"></span>블럭</span>
-      <span class="legend-item"><span class="cal-dot cancelled"></span>취소</span>
-    </div>
-    <button class="fab" id="add-schedule-fab" aria-label="일정 추가">+</button>
+    <div class="month-pill-row">${pillsHtml}</div>
+    <div class="schedule-card-grid">${cardsHtml}</div>
   `;
 
-  container.querySelector('#prev-month-btn').addEventListener('click', () => {
-    viewMonth -= 1;
-    if (viewMonth < 0) { viewMonth = 11; viewYear -= 1; }
-    renderSchedule(container);
-  });
-  container.querySelector('#next-month-btn').addEventListener('click', () => {
-    viewMonth += 1;
-    if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
-    renderSchedule(container);
-  });
   container.querySelector('#add-schedule-fab').addEventListener('click', () => {
-    openScheduleModal(today, null);
+    openScheduleModal(todayStr(), null);
   });
-  container.querySelectorAll('.cal-cell[data-date]').forEach((cell) => {
-    cell.addEventListener('click', () => {
-      const dateStr = cell.dataset.date;
-      const dayRounds = roundsByDate[dateStr] || [];
-      openScheduleModal(dateStr, dayRounds[0] || null);
+  container.querySelectorAll('.month-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      viewMonthKey = pill.dataset.key;
+      renderSchedule(container);
     });
   });
+  container.querySelectorAll('.schedule-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const round = rounds.find((r) => r.id === card.dataset.id);
+      if (round) openScheduleModal(round.date, round);
+    });
+  });
+}
+
+function buildScheduleCardHtml(round) {
+  const d = strToDate(round.date);
+  const typeClass = round.cancelled ? 'cancelled' : round.isBlock ? 'block' : '';
+  const tag = round.cancelled
+    ? '<span class="tag cancelled">취소</span>'
+    : round.isBlock ? '<span class="tag block">블럭</span>' : '';
+  const title = round.isBlock ? (round.memo || '블럭 일정') : (round.course || '골프장 미정');
+  const holesLine = round.isBlock ? '' : `<div class="schedule-card-holes">${round.holes}홀</div>`;
+  const companionsRow = (!round.isBlock && round.companions?.length)
+    ? `<div class="schedule-card-companions">${PEOPLE_ICON}<span>${escapeHtml(round.companions.join(', '))}</span></div>`
+    : '';
+
+  return `
+    <div class="schedule-card${typeClass ? ` ${typeClass}` : ''}" data-id="${round.id}">
+      <div class="schedule-card-top">
+        <div>
+          <div class="schedule-card-month">${d.getMonth() + 1}월</div>
+          <div class="schedule-card-day">${d.getDate()}일</div>
+          <div class="schedule-card-dow">${DOW[d.getDay()]}</div>
+        </div>
+        <div class="schedule-card-icon">${CARD_ICON}</div>
+      </div>
+      <div class="schedule-card-divider"></div>
+      <div class="schedule-card-course">${escapeHtml(title)}${tag}</div>
+      ${holesLine}
+      ${companionsRow}
+    </div>`;
 }
 
 // --- Modal ---
