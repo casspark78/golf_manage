@@ -18,9 +18,12 @@ export function renderHome(container, { goToTab }) {
       <div class="next-round-card">
         <div class="next-round-body">
           <div class="next-round-main">
-            <div class="dday">${ddayLabel}</div>
+            <div class="dday-row">
+              <span class="dday">${ddayLabel}</span>
+              <span class="dday-date">${formatDateKr(next.date)}</span>
+            </div>
             <div class="course">${escapeHtml(next.course || '골프장 미정')}</div>
-            <div class="meta">${formatDateKr(next.date)} · ${next.holes}홀${next.companions?.length ? ` · ${escapeHtml(next.companions.join(', '))}` : ''}</div>
+            <div class="meta">${next.holes}홀${next.companions?.length ? ` · ${escapeHtml(next.companions.join(', '))}` : ''}</div>
           </div>
           <div class="next-round-weather" id="next-round-weather"></div>
         </div>

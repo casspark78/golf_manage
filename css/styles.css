@@ -210,10 +210,23 @@ button, input, select, textarea {
 
 .next-round-main { min-width: 0; }
 
+.next-round-card .dday-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .next-round-card .dday {
   font-size: 32px;
   font-weight: 900;
   letter-spacing: -0.5px;
+}
+
+.next-round-card .dday-date {
+  font-size: 13px;
+  opacity: 0.85;
+  font-weight: 600;
 }
 
 .next-round-card .course {
