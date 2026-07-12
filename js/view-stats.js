@@ -209,9 +209,10 @@ function buildBest5ListHtml(items) {
     return `
     <div class="best5-row">
       <div class="best5-rank${i === 0 ? ' top' : ''}">${i + 1}</div>
-      <div class="best5-info">
-        <div class="best5-name">${escapeHtml(item.name)}</div>
-        <div class="best5-sub">${item.count}회 · 평균 ${round1(item.average)} (${range})</div>
+      <div class="best5-name">${escapeHtml(item.name)}</div>
+      <div class="best5-stats">
+        <div class="best5-count">${item.count}회</div>
+        <div class="best5-avg">평균 ${round1(item.average)} (${range})</div>
       </div>
     </div>`;
   }).join('');

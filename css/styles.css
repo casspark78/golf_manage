@@ -904,37 +904,49 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 4px;
+  padding: 13px 4px;
   border-bottom: 1px solid var(--border);
 }
 .best5-row:last-child { border-bottom: none; }
 .best5-rank {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--bg-input);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .best5-rank.top { background: var(--primary); color: #06210F; }
-.best5-info { flex: 1; min-width: 0; }
 .best5-name {
-  font-size: 16px;
+  flex: 1;
+  min-width: 0;
+  font-size: 19px;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.best5-sub {
-  font-size: 13px;
+.best5-stats {
+  flex-shrink: 0;
+  text-align: right;
+}
+.best5-count {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+.best5-avg {
+  font-size: 12px;
   color: var(--text-secondary);
   font-weight: 600;
-  margin-top: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .record-item {
