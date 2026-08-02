@@ -76,7 +76,7 @@ function setupSettingsModal() {
       <div class="settings-row">
         <div>
           <div class="label">Gemini API 키</div>
-          <div class="desc">스코어카드 사진 분석(gemini-2.0-flash)에 사용됩니다</div>
+          <div class="desc">스코어카드 사진 분석 및 연습 팁 요약(gemini-2.5-flash)에 사용됩니다</div>
         </div>
       </div>
       <div class="field" style="margin: 10px 0 16px;">

@@ -1,4 +1,4 @@
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'gemini-2.5-flash';
 
 const PROMPT = `당신은 골프 스코어카드 사진을 분석하는 도우미입니다.
 사진 속 스코어카드를 보고 아래 JSON 스키마에 맞춰 정보를 추출하세요.
