@@ -94,3 +94,58 @@ export async function scanScorecard(apiKey, base64Image, mimeType) {
       : [],
   };
 }
+
+const PRACTICE_SUMMARY_PROMPT = `당신은 골프 연습 기록을 분석해주는 코치입니다.
+아래는 사용자의 연습 기록 목록(날짜, 연습 시간, 총 연습타수, 그날의 최고클럽, 메모)입니다.
+전체 기록을 바탕으로 연습 패턴, 자주 언급되는 팁이나 느낀 점, 눈에 띄는 변화나 개선 포인트를 자연스러운 한국어 문단 3~5문장으로 요약해주세요.
+목록, 마크다운, 번호 매기기 없이 줄글로만 작성하세요.`;
+
+export async function summarizePracticeTips(apiKey, practices) {
+  if (!apiKey) {
+    throw new Error('Gemini API 키가 설정되어 있지 않습니다. 설정에서 API 키를 입력해주세요.');
+  }
+  if (!practices.length) {
+    throw new Error('요약할 연습 기록이 없습니다.');
+  }
+
+  const entries = practices
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((p) => `- ${p.date} | 시간: ${p.duration || '-'} | 타수: ${p.totalBalls ?? '-'} | 최고클럽: ${p.bestClub || '-'} | 메모: ${p.memo || '-'}`)
+    .join('\n');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const body = {
+    contents: [
+      { parts: [{ text: `${PRACTICE_SUMMARY_PROMPT}\n\n연습 기록:\n${entries}` }] },
+    ],
+  };
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error('네트워크 오류로 Gemini API 호출에 실패했습니다. 인터넷 연결을 확인해주세요.');
+  }
+
+  if (!res.ok) {
+    let msg = `Gemini API 오류 (${res.status})`;
+    try {
+      const errJson = await res.json();
+      if (errJson?.error?.message) msg += `: ${errJson.error.message}`;
+    } catch (e) { /* ignore */ }
+    throw new Error(msg);
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('Gemini 응답에서 결과를 찾을 수 없습니다.');
+  }
+  return text.trim();
+}

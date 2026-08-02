@@ -44,6 +44,7 @@ const DEFAULT_SETTINGS = {
   weatherLocation: { lat: 37.5665, lon: 126.9780, name: '서울' },
   lastDataChangeAt: null,
   lastExportAt: null,
+  practiceInsights: null,
 };
 
 export function getSettings() {

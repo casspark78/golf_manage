@@ -1,6 +1,7 @@
-import { getPracticesList, getPracticeByDate, upsertPractice, deletePractice } from './state.js';
-import { dateToStr, todayStr, formatDateKr, escapeHtml } from './utils.js';
+import { getPracticesList, getPracticeByDate, upsertPractice, deletePractice, getState, updateSettings } from './state.js';
+import { dateToStr, todayStr, formatDateKr, escapeHtml, parseDurationMinutes, formatMinutesKr } from './utils.js';
 import { toast, confirmAction } from './components.js';
+import { summarizePracticeTips } from './gemini.js';
 
 let viewYear;
 let viewMonth; // 0-indexed
@@ -50,7 +51,7 @@ export function renderPractice(container) {
     const isSelected = c.dateStr === selectedDate;
     const hasPractice = practiceDates.has(c.dateStr);
     return `
-      <div class="cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}" data-date="${c.dateStr}">
+      <div class="cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}${hasPractice ? ' has-practice' : ''}" data-date="${c.dateStr}">
         <span class="day-num">${c.dayNum}</span>
         <span class="dot-wrap">${hasPractice ? '<span class="cal-dot practice"></span>' : ''}</span>
       </div>`;
@@ -74,6 +75,9 @@ export function renderPractice(container) {
 
     <div class="section-title">${formatDateKr(selectedDate)} 연습 기록</div>
     <div id="practice-form-wrap"></div>
+
+    <div class="section-title">연습 통계</div>
+    <div id="practice-stats-wrap"></div>
   `;
 
   container.querySelector('#practice-prev-month').addEventListener('click', () => {
@@ -94,6 +98,94 @@ export function renderPractice(container) {
   });
 
   renderPracticeForm(container.querySelector('#practice-form-wrap'), selectedDate);
+  renderPracticeStats(container.querySelector('#practice-stats-wrap'));
+}
+
+function computePracticeStats(practices) {
+  const totalDays = practices.length;
+  const totalMinutes = practices.reduce((sum, p) => sum + parseDurationMinutes(p.duration), 0);
+  const totalBalls = practices.reduce((sum, p) => sum + (typeof p.totalBalls === 'number' ? p.totalBalls : 0), 0);
+  const clubCounts = {};
+  practices.forEach((p) => {
+    if (p.bestClub) clubCounts[p.bestClub] = (clubCounts[p.bestClub] || 0) + 1;
+  });
+  const topClubEntry = Object.entries(clubCounts).sort((a, b) => b[1] - a[1])[0];
+  return {
+    totalDays,
+    totalMinutes,
+    totalBalls,
+    topClub: topClubEntry ? topClubEntry[0] : null,
+    topClubCount: topClubEntry ? topClubEntry[1] : 0,
+  };
+}
+
+function renderPracticeStats(wrap) {
+  const practices = getPracticesList();
+
+  if (!practices.length) {
+    wrap.innerHTML = `<div class="card"><div class="empty-state">아직 연습 기록이 없습니다.<br>캘린더에서 날짜를 선택해 기록을 남겨보세요.</div></div>`;
+    return;
+  }
+
+  const stats = computePracticeStats(practices);
+  const settings = getState().settings;
+  const insights = settings.practiceInsights;
+  const stale = insights && insights.forCount !== practices.length;
+
+  wrap.innerHTML = `
+    <div class="card">
+      <div class="summary-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="summary-tile">
+          <div class="value">${stats.totalDays}</div>
+          <div class="label">총 연습일수</div>
+        </div>
+        <div class="summary-tile">
+          <div class="value" style="font-size:22px;">${stats.totalMinutes ? formatMinutesKr(stats.totalMinutes) : '-'}</div>
+          <div class="label">총 연습시간</div>
+        </div>
+        <div class="summary-tile">
+          <div class="value">${stats.totalBalls ? stats.totalBalls.toLocaleString() : '-'}</div>
+          <div class="label">총 연습타수</div>
+        </div>
+        <div class="summary-tile">
+          <div class="value neutral" style="font-size:22px;">${stats.topClub || '-'}</div>
+          <div class="label">최고클럽 선택${stats.topClub ? ` (${stats.topClubCount}회)` : ''}</div>
+        </div>
+      </div>
+
+      <div class="ai-summary-box" style="margin-top:14px;">
+        <div class="settings-row" style="border-bottom:none; padding-bottom:0;">
+          <div>
+            <div class="label">AI 팁 요약</div>
+            <div class="desc">메모를 Gemini로 분석해 연습 패턴과 팁을 요약합니다</div>
+          </div>
+        </div>
+        <div id="ai-summary-content" style="margin-top:10px;">
+          ${insights?.summary ? `<div class="ai-summary-text">${escapeHtml(insights.summary)}</div>${stale ? '<div class="desc" style="margin-top:6px;">새 기록이 추가되었습니다. 다시 요약해보세요.</div>' : ''}` : ''}
+        </div>
+        <button class="btn btn-secondary" id="ai-summary-btn" style="width:100%; margin-top:10px;">
+          ${insights?.summary ? 'AI 요약 다시 생성' : 'AI로 팁 요약하기'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  wrap.querySelector('#ai-summary-btn').addEventListener('click', async () => {
+    const apiKey = getState().settings.geminiApiKey;
+    const btn = wrap.querySelector('#ai-summary-btn');
+    btn.disabled = true;
+    btn.textContent = '요약 생성 중...';
+    try {
+      const summary = await summarizePracticeTips(apiKey, getPracticesList());
+      updateSettings({ practiceInsights: { summary, forCount: getPracticesList().length, generatedAt: Date.now() } });
+      renderPracticeStats(wrap);
+    } catch (e) {
+      console.error(e);
+      toast(e.message || 'AI 요약 생성에 실패했습니다.', 3200);
+      btn.disabled = false;
+      btn.textContent = insights?.summary ? 'AI 요약 다시 생성' : 'AI로 팁 요약하기';
+    }
+  });
 }
 
 function renderPracticeForm(wrap, date) {

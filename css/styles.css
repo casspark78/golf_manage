@@ -570,6 +570,7 @@ button, input, select, textarea {
 .cal-cell:active { transform: scale(0.94); }
 .cal-cell.empty { visibility: hidden; }
 .cal-cell.other-dim .day-num { color: var(--text-tertiary); }
+.cal-cell.has-practice { background: rgba(45, 201, 110, 0.16); border-color: rgba(45, 201, 110, 0.4); }
 .cal-cell.today { border-color: var(--primary); }
 .cal-cell.selected { background: var(--primary); border-color: var(--primary); }
 .cal-cell.selected .day-num { color: #06210F; font-weight: 800; }
@@ -586,6 +587,16 @@ button, input, select, textarea {
 }
 .cal-dot.practice { background: var(--primary); }
 .cal-cell.selected .cal-dot.practice { background: #06210F; }
+
+.ai-summary-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-hover, rgba(255,255,255,0.04));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
 
 /* Score view */
 .page-title {

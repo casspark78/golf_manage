@@ -60,6 +60,28 @@ export function round1(n) {
   return Math.round(n * 10) / 10;
 }
 
+export function parseDurationMinutes(str) {
+  if (!str) return 0;
+  const hourMatch = str.match(/(\d+(?:\.\d+)?)\s*시간/);
+  const minMatch = str.match(/(\d+)\s*분/);
+  let minutes = 0;
+  if (hourMatch) minutes += parseFloat(hourMatch[1]) * 60;
+  if (minMatch) minutes += parseInt(minMatch[1], 10);
+  if (!hourMatch && !minMatch) {
+    const numMatch = str.match(/^\s*(\d+)\s*$/);
+    if (numMatch) minutes += parseInt(numMatch[1], 10);
+  }
+  return Math.round(minutes);
+}
+
+export function formatMinutesKr(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+}
+
 export function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
