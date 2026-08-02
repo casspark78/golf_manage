@@ -1,5 +1,6 @@
 const ROUNDS_KEY = 'golf_rounds_v1';
 const SETTINGS_KEY = 'golf_settings_v1';
+const PRACTICES_KEY = 'golf_practices_v1';
 
 function readJson(key, fallback) {
   try {
@@ -27,6 +28,14 @@ export function getRounds() {
 
 export function saveRounds(rounds) {
   return writeJson(ROUNDS_KEY, rounds);
+}
+
+export function getPractices() {
+  return readJson(PRACTICES_KEY, []);
+}
+
+export function savePractices(practices) {
+  return writeJson(PRACTICES_KEY, practices);
 }
 
 const DEFAULT_SETTINGS = {

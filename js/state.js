@@ -1,4 +1,4 @@
-import { getRounds, saveRounds, getSettings, saveSettings } from './storage.js';
+import { getRounds, saveRounds, getSettings, saveSettings, getPractices, savePractices } from './storage.js';
 import { uid, todayStr } from './utils.js';
 
 const listeners = new Set();
@@ -6,6 +6,7 @@ const listeners = new Set();
 const store = {
   rounds: getRounds(),
   settings: getSettings(),
+  practices: getPractices(),
 };
 
 export function subscribe(fn) {
@@ -122,6 +123,60 @@ export function updateSettings(patch) {
   store.settings = { ...store.settings, ...patch };
   saveSettings(store.settings);
   notify();
+}
+
+// --- Practice log ---
+
+export function getPracticesList() {
+  return store.practices;
+}
+
+export function getPracticeByDate(date) {
+  return store.practices.find((p) => p.date === date) || null;
+}
+
+function persistPractices() {
+  savePractices(store.practices);
+  store.settings.lastDataChangeAt = Date.now();
+  saveSettings(store.settings);
+  notify();
+}
+
+export function upsertPractice(date, data) {
+  const idx = store.practices.findIndex((p) => p.date === date);
+  if (idx === -1) {
+    store.practices.push({ id: uid(), date, createdAt: Date.now(), ...data });
+  } else {
+    store.practices[idx] = { ...store.practices[idx], ...data };
+  }
+  persistPractices();
+}
+
+export function deletePractice(id) {
+  store.practices = store.practices.filter((p) => p.id !== id);
+  persistPractices();
+}
+
+/**
+ * Bulk import practices (e.g. from a JSON backup), merging by date —
+ * skips dates that already exist locally. Returns { added, skipped }.
+ */
+export function importPractices(newPractices) {
+  if (!Array.isArray(newPractices)) return { added: 0, skipped: 0 };
+  const existingDates = new Set(store.practices.map((p) => p.date));
+  let added = 0;
+  let skipped = 0;
+  newPractices.forEach((p) => {
+    if (existingDates.has(p.date)) {
+      skipped += 1;
+      return;
+    }
+    existingDates.add(p.date);
+    store.practices.push({ ...p, id: p.id || uid() });
+    added += 1;
+  });
+  persistPractices();
+  return { added, skipped };
 }
 
 // --- Derived / computed helpers ---

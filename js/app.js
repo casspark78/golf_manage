@@ -1,8 +1,9 @@
-import { subscribe, getState, updateSettings, getRoundsList, importRounds, markExported } from './state.js';
+import { subscribe, getState, updateSettings, getRoundsList, importRounds, markExported, getPracticesList, importPractices } from './state.js';
 import { renderHome } from './view-home.js';
 import { renderSchedule, bindScheduleModalChrome } from './view-schedule.js';
 import { renderScore } from './view-score.js';
 import { renderStats } from './view-stats.js';
+import { renderPractice } from './view-practice.js';
 import { openModal, closeModal, toast, confirmAction } from './components.js';
 import { geocodeLocation } from './weather.js';
 import { escapeHtml } from './utils.js';
@@ -17,6 +18,7 @@ const views = {
   schedule: document.getElementById('view-schedule'),
   score: document.getElementById('view-score'),
   stats: document.getElementById('view-stats'),
+  practice: document.getElementById('view-practice'),
 };
 
 function goToTab(tab) {
@@ -35,6 +37,7 @@ function renderCurrentView() {
   else if (currentTab === 'schedule') renderSchedule(views.schedule);
   else if (currentTab === 'score') renderScore(views.score);
   else if (currentTab === 'stats') renderStats(views.stats);
+  else if (currentTab === 'practice') renderPractice(views.practice);
 }
 
 function applyTheme(theme) {
@@ -137,8 +140,8 @@ function setupSettingsModal() {
     });
 
     body.querySelector('#export-data-btn').addEventListener('click', () => {
-      const rounds = getRoundsList();
-      const blob = new Blob([JSON.stringify(rounds, null, 2)], { type: 'application/json' });
+      const backup = { rounds: getRoundsList(), practices: getPracticesList() };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const today = new Date().toISOString().slice(0, 10);
@@ -162,8 +165,13 @@ function setupSettingsModal() {
           '기존 기록과 날짜가 겹치지 않는 항목만 추가합니다.\n계속할까요?'
         );
         if (!merge) return;
-        const { added, skipped } = importRounds(data, 'merge');
-        toast(`${added}건 추가됨${skipped ? `, ${skipped}건 중복으로 건너뜀` : ''}`, 3200);
+        const rounds = Array.isArray(data) ? data : (data.rounds || []);
+        const practices = Array.isArray(data) ? [] : (data.practices || []);
+        const { added, skipped } = importRounds(rounds, 'merge');
+        const practiceResult = importPractices(practices);
+        const totalAdded = added + practiceResult.added;
+        const totalSkipped = skipped + practiceResult.skipped;
+        toast(`${totalAdded}건 추가됨${totalSkipped ? `, ${totalSkipped}건 중복으로 건너뜀` : ''}`, 3200);
         closeModal(overlay);
       } catch (e) {
         console.error(e);
