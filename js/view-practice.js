@@ -128,9 +128,10 @@ function renderPracticeStats(wrap) {
   }
 
   const stats = computePracticeStats(practices);
+  const memoCount = practices.filter((p) => p.memo && p.memo.trim()).length;
   const settings = getState().settings;
   const insights = settings.practiceInsights;
-  const stale = insights && insights.forCount !== practices.length;
+  const stale = insights && insights.forCount !== memoCount;
 
   wrap.innerHTML = `
     <div class="card">
@@ -157,7 +158,7 @@ function renderPracticeStats(wrap) {
         <div class="settings-row" style="border-bottom:none; padding-bottom:0;">
           <div>
             <div class="label">AI 팁 요약</div>
-            <div class="desc">메모를 Gemini로 분석해 연습 패턴과 팁을 요약합니다</div>
+            <div class="desc">메모란에 남긴 내용만 Gemini로 요약합니다</div>
           </div>
         </div>
         <div id="ai-summary-content" style="margin-top:10px;">
@@ -177,7 +178,8 @@ function renderPracticeStats(wrap) {
     btn.textContent = '요약 생성 중...';
     try {
       const summary = await summarizePracticeTips(apiKey, getPracticesList());
-      updateSettings({ practiceInsights: { summary, forCount: getPracticesList().length, generatedAt: Date.now() } });
+      const newMemoCount = getPracticesList().filter((p) => p.memo && p.memo.trim()).length;
+      updateSettings({ practiceInsights: { summary, forCount: newMemoCount, generatedAt: Date.now() } });
       renderPracticeStats(wrap);
     } catch (e) {
       console.error(e);

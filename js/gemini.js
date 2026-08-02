@@ -95,30 +95,34 @@ export async function scanScorecard(apiKey, base64Image, mimeType) {
   };
 }
 
-const PRACTICE_SUMMARY_PROMPT = `당신은 골프 연습 기록을 분석해주는 코치입니다.
-아래는 사용자의 연습 기록 목록(날짜, 연습 시간, 총 연습타수, 그날의 최고클럽, 메모)입니다.
-전체 기록을 바탕으로 연습 패턴, 자주 언급되는 팁이나 느낀 점, 눈에 띄는 변화나 개선 포인트를 자연스러운 한국어 문단 3~5문장으로 요약해주세요.
+const PRACTICE_SUMMARY_PROMPT = `당신은 골프 연습 메모를 정리해주는 도우미입니다.
+아래는 사용자가 연습할 때마다 남긴 메모 목록입니다(날짜별).
+메모 내용만을 바탕으로 자주 언급되는 팁, 느낀 점, 반복되는 주제나 변화를 자연스러운 한국어 문단 3~5문장으로 요약해주세요.
 목록, 마크다운, 번호 매기기 없이 줄글로만 작성하세요.`;
 
 export async function summarizePracticeTips(apiKey, practices) {
   if (!apiKey) {
     throw new Error('Gemini API 키가 설정되어 있지 않습니다. 설정에서 API 키를 입력해주세요.');
   }
-  if (!practices.length) {
-    throw new Error('요약할 연습 기록이 없습니다.');
+
+  const memos = practices
+    .filter((p) => p.memo && p.memo.trim())
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!memos.length) {
+    throw new Error('요약할 메모가 없습니다.');
   }
 
-  const entries = practices
-    .slice()
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((p) => `- ${p.date} | 시간: ${p.duration || '-'} | 타수: ${p.totalBalls ?? '-'} | 최고클럽: ${p.bestClub || '-'} | 메모: ${p.memo || '-'}`)
+  const entries = memos
+    .map((p) => `- ${p.date}: ${p.memo.trim()}`)
     .join('\n');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const body = {
     contents: [
-      { parts: [{ text: `${PRACTICE_SUMMARY_PROMPT}\n\n연습 기록:\n${entries}` }] },
+      { parts: [{ text: `${PRACTICE_SUMMARY_PROMPT}\n\n메모 목록:\n${entries}` }] },
     ],
   };
 
