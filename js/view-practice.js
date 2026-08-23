@@ -10,6 +10,7 @@ let rerenderFn = null;
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const CLUB_OPTIONS = ['드라이버', '우드', '유틸', '아이언', '웨지', '퍼터'];
+const DURATION_OPTIONS = ['30분', '1시간', '1시간30분', '2시간', '2시간30분', '3시간'];
 
 function initMonthIfNeeded() {
   if (viewYear === undefined) {
@@ -198,7 +199,10 @@ function renderPracticeForm(wrap, date) {
       <div class="field-row">
         <div class="field">
           <label>연습 시간</label>
-          <input type="text" id="p-duration" placeholder="예: 1시간 30분" value="${escapeHtml(existing?.duration || '')}">
+          <select id="p-duration">
+            <option value="">선택 안 함</option>
+            ${DURATION_OPTIONS.map((d) => `<option value="${d}" ${existing?.duration === d ? 'selected' : ''}>${d}</option>`).join('')}
+          </select>
         </div>
         <div class="field">
           <label>총 연습타수</label>
