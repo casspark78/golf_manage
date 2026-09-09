@@ -243,18 +243,28 @@ function renderPracticeForm(wrap, date) {
       bestClub: wrap.querySelector('#p-club').value || null,
       memo: wrap.querySelector('#p-memo').value.trim(),
     };
-    upsertPractice(date, data);
-    toast('연습 기록이 저장되었습니다.');
-    rerenderFn && rerenderFn();
+    try {
+      upsertPractice(date, data);
+      toast('연습 기록이 저장되었습니다.');
+      rerenderFn && rerenderFn();
+    } catch (e) {
+      console.error(e);
+      toast(e.message, 4500);
+    }
   });
 
   const deleteBtn = wrap.querySelector('#p-delete');
   if (deleteBtn) {
     deleteBtn.addEventListener('click', () => {
       if (!confirmAction('이 날의 연습 기록을 삭제할까요?')) return;
-      deletePractice(existing.id);
-      toast('연습 기록이 삭제되었습니다.');
-      rerenderFn && rerenderFn();
+      try {
+        deletePractice(existing.id);
+        toast('연습 기록이 삭제되었습니다.');
+        rerenderFn && rerenderFn();
+      } catch (e) {
+        console.error(e);
+        toast(e.message, 4500);
+      }
     });
   }
 }

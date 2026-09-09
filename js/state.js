@@ -30,11 +30,20 @@ export function findRoundsByDate(dateStr, excludeId) {
   return store.rounds.filter((r) => r.date === dateStr && r.id !== excludeId);
 }
 
+const STORAGE_FULL_MESSAGE = '저장 공간이 부족해 방금 변경사항이 저장되지 않았습니다. 사진이 있는 오래된 라운드를 삭제하거나, 설정에서 데이터를 내보낸 후 정리해주세요.';
+
+// Writes the rounds array to disk. Returns true on success. On failure
+// (most commonly localStorage quota exceeded due to accumulated photos),
+// the caller must roll back its in-memory change before notify() runs —
+// otherwise the UI shows data that was never actually saved, and it
+// silently disappears the next time the app reloads.
 function persistRounds() {
-  saveRounds(store.rounds);
-  store.settings.lastDataChangeAt = Date.now();
-  saveSettings(store.settings);
-  notify();
+  const ok = saveRounds(store.rounds);
+  if (ok) {
+    store.settings.lastDataChangeAt = Date.now();
+    saveSettings(store.settings);
+  }
+  return ok;
 }
 
 export function markExported() {
@@ -71,21 +80,38 @@ export function addRound(data) {
     createdAt: Date.now(),
   };
   store.rounds.push(round);
-  persistRounds();
+  if (!persistRounds()) {
+    store.rounds.pop();
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
   return round;
 }
 
 export function updateRound(id, patch) {
   const idx = store.rounds.findIndex((r) => r.id === id);
   if (idx === -1) return null;
-  store.rounds[idx] = { ...store.rounds[idx], ...patch };
-  persistRounds();
+  const previous = store.rounds[idx];
+  store.rounds[idx] = { ...previous, ...patch };
+  if (!persistRounds()) {
+    store.rounds[idx] = previous;
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
   return store.rounds[idx];
 }
 
 export function deleteRound(id) {
+  const previous = store.rounds;
   store.rounds = store.rounds.filter((r) => r.id !== id);
-  persistRounds();
+  if (!persistRounds()) {
+    store.rounds = previous;
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
 }
 
 /**
@@ -97,9 +123,16 @@ export function deleteRound(id) {
 export function importRounds(newRounds, mode = 'merge') {
   if (!Array.isArray(newRounds)) throw new Error('가져올 데이터 형식이 올바르지 않습니다.');
 
+  const previous = store.rounds;
+
   if (mode === 'replace') {
     store.rounds = newRounds.map((r) => ({ ...r, id: r.id || uid() }));
-    persistRounds();
+    if (!persistRounds()) {
+      store.rounds = previous;
+      notify();
+      throw new Error(STORAGE_FULL_MESSAGE);
+    }
+    notify();
     return { added: store.rounds.length, skipped: 0 };
   }
 
@@ -115,7 +148,12 @@ export function importRounds(newRounds, mode = 'merge') {
     store.rounds.push({ ...r, id: r.id || uid() });
     added += 1;
   });
-  persistRounds();
+  if (!persistRounds()) {
+    store.rounds = previous;
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
   return { added, skipped };
 }
 
@@ -136,25 +174,39 @@ export function getPracticeByDate(date) {
 }
 
 function persistPractices() {
-  savePractices(store.practices);
-  store.settings.lastDataChangeAt = Date.now();
-  saveSettings(store.settings);
-  notify();
+  const ok = savePractices(store.practices);
+  if (ok) {
+    store.settings.lastDataChangeAt = Date.now();
+    saveSettings(store.settings);
+  }
+  return ok;
 }
 
 export function upsertPractice(date, data) {
   const idx = store.practices.findIndex((p) => p.date === date);
+  const previous = store.practices.slice();
   if (idx === -1) {
     store.practices.push({ id: uid(), date, createdAt: Date.now(), ...data });
   } else {
     store.practices[idx] = { ...store.practices[idx], ...data };
   }
-  persistPractices();
+  if (!persistPractices()) {
+    store.practices = previous;
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
 }
 
 export function deletePractice(id) {
+  const previous = store.practices;
   store.practices = store.practices.filter((p) => p.id !== id);
-  persistPractices();
+  if (!persistPractices()) {
+    store.practices = previous;
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
 }
 
 /**
@@ -163,6 +215,7 @@ export function deletePractice(id) {
  */
 export function importPractices(newPractices) {
   if (!Array.isArray(newPractices)) return { added: 0, skipped: 0 };
+  const previous = store.practices;
   const existingDates = new Set(store.practices.map((p) => p.date));
   let added = 0;
   let skipped = 0;
@@ -175,7 +228,12 @@ export function importPractices(newPractices) {
     store.practices.push({ ...p, id: p.id || uid() });
     added += 1;
   });
-  persistPractices();
+  if (!persistPractices()) {
+    store.practices = previous;
+    notify();
+    throw new Error(STORAGE_FULL_MESSAGE);
+  }
+  notify();
   return { added, skipped };
 }
 

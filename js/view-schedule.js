@@ -239,25 +239,35 @@ function openScheduleModal(dateStr, existing) {
       payload.companions = [];
     }
 
-    if (existing) {
-      updateRound(existing.id, payload);
-      toast('일정이 수정되었습니다.');
-    } else {
-      addRound(payload);
-      toast('일정이 추가되었습니다.');
+    try {
+      if (existing) {
+        updateRound(existing.id, payload);
+        toast('일정이 수정되었습니다.');
+      } else {
+        addRound(payload);
+        toast('일정이 추가되었습니다.');
+      }
+      closeModal(overlay);
+      rerenderFn && rerenderFn();
+    } catch (e) {
+      console.error(e);
+      toast(e.message, 4500);
     }
-    closeModal(overlay);
-    rerenderFn && rerenderFn();
   });
 
   const deleteBtn = body.querySelector('#f-delete');
   if (deleteBtn) {
     deleteBtn.addEventListener('click', () => {
       if (confirmAction('이 일정을 삭제할까요?')) {
-        deleteRound(existing.id);
-        toast('일정이 삭제되었습니다.');
-        closeModal(overlay);
-        rerenderFn && rerenderFn();
+        try {
+          deleteRound(existing.id);
+          toast('일정이 삭제되었습니다.');
+          closeModal(overlay);
+          rerenderFn && rerenderFn();
+        } catch (e) {
+          console.error(e);
+          toast(e.message, 4500);
+        }
       }
     });
   }

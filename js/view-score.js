@@ -186,10 +186,15 @@ function openScoreEntryModal(round) {
 
   body.querySelector('#entry-delete-round').addEventListener('click', () => {
     if (!confirmAction('이 라운드 기록을 삭제할까요? 되돌릴 수 없습니다.')) return;
-    deleteRound(round.id);
-    toast('라운드가 삭제되었습니다.');
-    close();
-    rerenderFn && rerenderFn();
+    try {
+      deleteRound(round.id);
+      toast('라운드가 삭제되었습니다.');
+      close();
+      rerenderFn && rerenderFn();
+    } catch (e) {
+      console.error(e);
+      toast(e.message, 4000);
+    }
   });
 
   const cancelSwitch = body.querySelector('#entry-cancel-switch');
@@ -224,18 +229,23 @@ function openScoreEntryModal(round) {
       };
     });
 
-    updateRound(round.id, {
-      score: Number.isFinite(score) ? score : null,
-      par: Number.isFinite(par) ? par : round.par,
-      birdies,
-      eagles,
-      cancelled,
-      companionScores,
-      photo: pendingPhoto,
-    });
-    toast('스코어가 저장되었습니다.');
-    close();
-    rerenderFn && rerenderFn();
+    try {
+      updateRound(round.id, {
+        score: Number.isFinite(score) ? score : null,
+        par: Number.isFinite(par) ? par : round.par,
+        birdies,
+        eagles,
+        cancelled,
+        companionScores,
+        photo: pendingPhoto,
+      });
+      toast('스코어가 저장되었습니다.');
+      close();
+      rerenderFn && rerenderFn();
+    } catch (e) {
+      console.error(e);
+      toast(e.message, 4500);
+    }
   };
 
   scanBtn.onclick = () => fileInput.click();

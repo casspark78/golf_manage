@@ -6,7 +6,7 @@ import { renderStats } from './view-stats.js';
 import { renderPractice } from './view-practice.js';
 import { openModal, closeModal, toast, confirmAction } from './components.js';
 import { geocodeLocation } from './weather.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, getLocalStorageUsageBytes } from './utils.js';
 
 const SUN_PATH = `<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
 const MOON_PATH = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
@@ -64,6 +64,29 @@ function setupThemeToggle() {
   });
 }
 
+// iOS/Safari's localStorage quota isn't queryable directly; ~5MB is the
+// commonly observed ceiling, so we use it just to color-code the estimate.
+const ASSUMED_STORAGE_QUOTA_BYTES = 5 * 1024 * 1024;
+
+function renderStorageUsage() {
+  const usedBytes = getLocalStorageUsageBytes();
+  const usedMB = (usedBytes / (1024 * 1024)).toFixed(1);
+  const pct = Math.min(100, Math.round((usedBytes / ASSUMED_STORAGE_QUOTA_BYTES) * 100));
+  const warn = pct >= 70;
+  const barColor = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#E8A33D' : 'var(--primary)';
+  return `
+    <div style="margin-top:8px;">
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); font-weight:600;">
+        <span>브라우저 저장공간 사용량 (추정)</span>
+        <span>${usedMB}MB / 약 5MB</span>
+      </div>
+      <div style="margin-top:6px; height:6px; border-radius:3px; background:var(--border); overflow:hidden;">
+        <div style="width:${pct}%; height:100%; background:${barColor};"></div>
+      </div>
+      ${warn ? `<div class="desc" style="margin-top:6px; color:${barColor};">저장공간이 부족해지면 사진이 저장되지 않을 수 있어요. 사진이 있는 오래된 라운드를 정리하거나 데이터를 내보낸 후 삭제해주세요.</div>` : ''}
+    </div>`;
+}
+
 function setupSettingsModal() {
   const overlay = document.getElementById('settings-modal-overlay');
   const body = document.getElementById('settings-modal-body');
@@ -102,6 +125,7 @@ function setupSettingsModal() {
           <div class="desc">모든 기록은 이 기기의 브라우저에만 저장됩니다 (오프라인 사용 가능)</div>
         </div>
       </div>
+      ${renderStorageUsage()}
 
       <div class="settings-row" style="margin-top:4px; border-bottom:none; padding-bottom:0;">
         <div>
@@ -175,7 +199,7 @@ function setupSettingsModal() {
         closeModal(overlay);
       } catch (e) {
         console.error(e);
-        toast('가져오기에 실패했습니다. 파일 형식을 확인해주세요.', 3200);
+        toast(e.message || '가져오기에 실패했습니다. 파일 형식을 확인해주세요.', 4500);
       } finally {
         importInput.value = '';
       }

@@ -82,6 +82,22 @@ export function formatMinutesKr(totalMinutes) {
   return `${m}분`;
 }
 
+/**
+ * Rough estimate of bytes used by this origin's localStorage (UTF-16, 2
+ * bytes/char). Used to warn users before they hit the quota wall — most
+ * commonly caused by accumulated round photos, which are the biggest
+ * consumer of storage in this app.
+ */
+export function getLocalStorageUsageBytes() {
+  let total = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    const value = localStorage.getItem(key) || '';
+    total += (key.length + value.length) * 2;
+  }
+  return total;
+}
+
 export function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
