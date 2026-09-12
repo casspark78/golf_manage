@@ -1,7 +1,8 @@
 import { getRoundsList, updateRound, deleteRound, getState } from './state.js';
-import { strToDate, todayStr, escapeHtml, fileToBase64, resizeImageToDataUrl } from './utils.js';
+import { strToDate, todayStr, escapeHtml, fileToBase64, resizeImageToBlob } from './utils.js';
 import { toast, confirmAction } from './components.js';
 import { scanScorecard } from './gemini.js';
+import { getPhotoUrl, putPhoto, deletePhoto, releasePhotoUrl } from './photo-store.js';
 
 let rerenderFn = null;
 
@@ -54,6 +55,27 @@ export function renderScore(container) {
       if (round) openScoreEntryModal(round);
     });
   });
+
+  applyTilePhotos(container, rounds);
+}
+
+/**
+ * Photos live in IndexedDB, so they can't be inlined while building the
+ * tile markup. Paint them in once their object URLs resolve.
+ */
+function applyTilePhotos(container, rounds) {
+  rounds.filter((r) => r.hasPhoto && !r.photo).forEach(async (round) => {
+    try {
+      const url = await getPhotoUrl(round.id);
+      if (!url) return;
+      const tile = container.querySelector(`.score-tile[data-id="${round.id}"]`);
+      if (!tile) return; // view re-rendered while we were loading
+      tile.classList.add('has-photo');
+      tile.style.backgroundImage = `url('${url}')`;
+    } catch (e) {
+      console.error('photo load failed', round.id, e);
+    }
+  });
 }
 
 function buildScoreTileHtml(round) {
@@ -67,11 +89,13 @@ function buildScoreTileHtml(round) {
     ? `<div class="score-tile-companions">${PEOPLE_ICON}<span>${escapeHtml(round.companions.join(', '))}</span></div>`
     : '';
 
-  const photoStyle = round.photo ? ` style="background-image:url('${round.photo}')"` : '';
-  const photoClass = round.photo ? ' has-photo' : '';
+  // IndexedDB-backed photos are painted in asynchronously by applyTilePhotos();
+  // a legacy base64 photo (migration unavailable) is inlined here as before.
+  const legacyStyle = round.photo ? ` style="background-image:url('${round.photo}')"` : '';
+  const legacyClass = round.photo ? ' has-photo' : '';
 
   return `
-    <div class="score-tile${round.cancelled ? ' cancelled' : ''}${photoClass}" data-id="${round.id}"${photoStyle}>
+    <div class="score-tile${round.cancelled ? ' cancelled' : ''}${legacyClass}" data-id="${round.id}"${legacyStyle}>
       <div class="score-tile-top">
         <div>
           <div class="score-tile-month">${d.getMonth() + 1}월</div>
@@ -111,7 +135,12 @@ function openScoreEntryModal(round) {
   const fileInput = document.getElementById('score-entry-file-input');
 
   titleEl.textContent = round.course || '골프장 미정';
-  let pendingPhoto = round.photo || null;
+
+  // photoState: what the photo should look like once saved.
+  //   url      — preview source (existing object URL, or one for a new pick)
+  //   newBlob  — set when the user picked a new image this session
+  //   removed  — set when the user deleted the existing photo
+  const photoState = { url: null, newBlob: null, removed: false };
 
   const companionRows = (round.companions || [])
     .map((name) => buildCompanionRow(name, (round.companionScores || []).find((c) => c.name === name)))
@@ -150,9 +179,9 @@ function openScoreEntryModal(round) {
 
   function renderPhotoSection() {
     const section = body.querySelector('#photo-section');
-    section.innerHTML = pendingPhoto
+    section.innerHTML = photoState.url
       ? `
-        <img src="${pendingPhoto}" class="photo-preview">
+        <img src="${photoState.url}" class="photo-preview">
         <div class="btn-row" style="margin-top:10px;">
           <button class="btn btn-secondary" id="photo-add-btn">사진 변경</button>
           <button class="btn btn-danger" id="photo-remove-btn">사진 삭제</button>
@@ -164,17 +193,34 @@ function openScoreEntryModal(round) {
         </div>`;
     section.querySelector('#photo-add-btn').addEventListener('click', () => photoFileInput.click());
     section.querySelector('#photo-remove-btn')?.addEventListener('click', () => {
-      pendingPhoto = null;
+      photoState.url = null;
+      photoState.newBlob = null;
+      photoState.removed = true;
       renderPhotoSection();
     });
   }
   renderPhotoSection();
 
+  if (round.photo) {
+    photoState.url = round.photo; // legacy base64, not yet migrated
+    renderPhotoSection();
+  } else if (round.hasPhoto) {
+    getPhotoUrl(round.id).then((url) => {
+      // Ignore if the user already picked or removed a photo meanwhile.
+      if (!url || photoState.newBlob || photoState.removed) return;
+      photoState.url = url;
+      renderPhotoSection();
+    }).catch((e) => console.error('photo load failed', e));
+  }
+
   photoFileInput.onchange = async () => {
     const file = photoFileInput.files?.[0];
     if (!file) return;
     try {
-      pendingPhoto = await resizeImageToDataUrl(file);
+      const blob = await resizeImageToBlob(file);
+      photoState.newBlob = blob;
+      photoState.removed = false;
+      photoState.url = URL.createObjectURL(blob);
       renderPhotoSection();
     } catch (e) {
       console.error(e);
@@ -210,7 +256,7 @@ function openScoreEntryModal(round) {
 
   closeBtn.onclick = close;
 
-  saveBtn.onclick = () => {
+  saveBtn.onclick = async () => {
     const score = parseFloat(body.querySelector('#entry-my-score').value);
     const par = parseFloat(body.querySelector('#entry-par').value);
     const birdies = parseInt(body.querySelector('#entry-my-birdies').value, 10) || 0;
@@ -229,22 +275,52 @@ function openScoreEntryModal(round) {
       };
     });
 
+    saveBtn.disabled = true;
     try {
-      updateRound(round.id, {
+      // Write the photo first: flipping hasPhoto before the blob exists would
+      // leave a tile pointing at nothing. If only the photo write fails, the
+      // scores are still worth saving — warn instead of losing the whole edit.
+      let photoSaved = true;
+      try {
+        if (photoState.newBlob) {
+          await putPhoto(round.id, photoState.newBlob);
+          releasePhotoUrl(round.id);
+        } else if (photoState.removed) {
+          await deletePhoto(round.id);
+          releasePhotoUrl(round.id);
+        }
+      } catch (e) {
+        console.error('photo save failed', e);
+        photoSaved = false;
+      }
+
+      const patch = {
         score: Number.isFinite(score) ? score : null,
         par: Number.isFinite(par) ? par : round.par,
         birdies,
         eagles,
         cancelled,
         companionScores,
-        photo: pendingPhoto,
-      });
-      toast('스코어가 저장되었습니다.');
+      };
+      // Only touch the photo fields when the photo actually changed and the
+      // change stuck, so an untouched legacy base64 photo (one that failed to
+      // migrate) survives.
+      if (photoSaved && photoState.newBlob) {
+        patch.hasPhoto = true;
+        patch.photo = undefined;
+      } else if (photoSaved && photoState.removed) {
+        patch.hasPhoto = false;
+        patch.photo = undefined;
+      }
+      updateRound(round.id, patch);
+      toast(photoSaved ? '스코어가 저장되었습니다.' : '스코어는 저장되었지만 사진은 저장하지 못했습니다.', photoSaved ? 2000 : 4500);
       close();
       rerenderFn && rerenderFn();
     } catch (e) {
       console.error(e);
-      toast(e.message, 4500);
+      toast(e.message || '저장에 실패했습니다.', 4500);
+    } finally {
+      saveBtn.disabled = false;
     }
   };
 

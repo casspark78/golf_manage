@@ -1,4 +1,4 @@
-import { subscribe, getState, updateSettings, getRoundsList, importRounds, markExported, getPracticesList, importPractices } from './state.js';
+import { subscribe, getState, updateSettings, getRoundsList, importRounds, markExported, getPracticesList, importPractices, migrateLegacyPhotos } from './state.js';
 import { renderHome } from './view-home.js';
 import { renderSchedule, bindScheduleModalChrome } from './view-schedule.js';
 import { renderScore } from './view-score.js';
@@ -6,7 +6,8 @@ import { renderStats } from './view-stats.js';
 import { renderPractice } from './view-practice.js';
 import { openModal, closeModal, toast, confirmAction } from './components.js';
 import { geocodeLocation } from './weather.js';
-import { escapeHtml, getLocalStorageUsageBytes } from './utils.js';
+import { escapeHtml, getLocalStorageUsageBytes, blobToDataUrl, dataUrlToBlob, uid } from './utils.js';
+import { getPhoto, putPhoto, estimateStorage } from './photo-store.js';
 
 const SUN_PATH = `<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
 const MOON_PATH = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
@@ -64,27 +65,45 @@ function setupThemeToggle() {
   });
 }
 
-// iOS/Safari's localStorage quota isn't queryable directly; ~5MB is the
-// commonly observed ceiling, so we use it just to color-code the estimate.
-const ASSUMED_STORAGE_QUOTA_BYTES = 5 * 1024 * 1024;
+function formatBytes(bytes) {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  return `${Math.round(bytes / 1024)}KB`;
+}
 
-function renderStorageUsage() {
-  const usedBytes = getLocalStorageUsageBytes();
-  const usedMB = (usedBytes / (1024 * 1024)).toFixed(1);
-  const pct = Math.min(100, Math.round((usedBytes / ASSUMED_STORAGE_QUOTA_BYTES) * 100));
-  const warn = pct >= 70;
+function renderStorageGauge({ usage, quota, label }) {
+  const pct = quota ? Math.min(100, Math.round((usage / quota) * 100)) : 0;
   const barColor = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#E8A33D' : 'var(--primary)';
   return `
     <div style="margin-top:8px;">
-      <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); font-weight:600;">
-        <span>브라우저 저장공간 사용량 (추정)</span>
-        <span>${usedMB}MB / 약 5MB</span>
+      <div style="display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--text-secondary); font-weight:600;">
+        <span>${label}</span>
+        <span>${formatBytes(usage)} / ${formatBytes(quota)}</span>
       </div>
       <div style="margin-top:6px; height:6px; border-radius:3px; background:var(--border); overflow:hidden;">
         <div style="width:${pct}%; height:100%; background:${barColor};"></div>
       </div>
-      ${warn ? `<div class="desc" style="margin-top:6px; color:${barColor};">저장공간이 부족해지면 사진이 저장되지 않을 수 있어요. 사진이 있는 오래된 라운드를 정리하거나 데이터를 내보낸 후 삭제해주세요.</div>` : ''}
+      ${pct >= 70 ? `<div class="desc" style="margin-top:6px; color:${barColor};">저장공간이 얼마 남지 않았어요. 사진이 있는 오래된 라운드를 정리하거나 데이터를 내보낸 후 삭제해주세요.</div>` : ''}
     </div>`;
+}
+
+/**
+ * Fills in the storage gauge once navigator.storage.estimate() resolves.
+ * That figure covers IndexedDB (where photos now live) plus the cached app
+ * shell; if the browser doesn't expose it we fall back to measuring
+ * localStorage against Safari's fixed 5MB ceiling.
+ */
+async function fillStorageUsage(container) {
+  const el = container.querySelector('#storage-usage');
+  if (!el) return;
+  const estimate = await estimateStorage();
+  el.innerHTML = estimate
+    ? renderStorageGauge({ usage: estimate.usage, quota: estimate.quota, label: '저장공간 사용량 (사진 포함)' })
+    : renderStorageGauge({
+      usage: getLocalStorageUsageBytes(),
+      quota: 5 * 1024 * 1024,
+      label: '브라우저 저장공간 사용량 (추정)',
+    });
 }
 
 function setupSettingsModal() {
@@ -125,7 +144,7 @@ function setupSettingsModal() {
           <div class="desc">모든 기록은 이 기기의 브라우저에만 저장됩니다 (오프라인 사용 가능)</div>
         </div>
       </div>
-      ${renderStorageUsage()}
+      <div id="storage-usage"></div>
 
       <div class="settings-row" style="margin-top:4px; border-bottom:none; padding-bottom:0;">
         <div>
@@ -163,18 +182,40 @@ function setupSettingsModal() {
       }
     });
 
-    body.querySelector('#export-data-btn').addEventListener('click', () => {
-      const backup = { rounds: getRoundsList(), practices: getPracticesList() };
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const today = new Date().toISOString().slice(0, 10);
-      a.href = url;
-      a.download = `haksu-golf-backup-${today}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      markExported();
-      toast('데이터를 내보냈습니다.');
+    const exportBtn = body.querySelector('#export-data-btn');
+    exportBtn.addEventListener('click', async () => {
+      exportBtn.disabled = true;
+      try {
+        // Photos live in IndexedDB now, so pull them back in as base64 to
+        // keep the backup file self-contained and readable by older versions.
+        const rounds = await Promise.all(getRoundsList().map(async (round) => {
+          if (round.photo || !round.hasPhoto) return round;
+          try {
+            const photoBlob = await getPhoto(round.id);
+            if (!photoBlob) return round;
+            return { ...round, photo: await blobToDataUrl(photoBlob) };
+          } catch (e) {
+            console.error('photo export failed', round.id, e);
+            return round;
+          }
+        }));
+        const backup = { rounds, practices: getPracticesList() };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const today = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `haksu-golf-backup-${today}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        markExported();
+        toast('데이터를 내보냈습니다.');
+      } catch (e) {
+        console.error(e);
+        toast('내보내기에 실패했습니다.', 3200);
+      } finally {
+        exportBtn.disabled = false;
+      }
     });
 
     const importInput = body.querySelector('#import-file-input');
@@ -189,9 +230,34 @@ function setupSettingsModal() {
           '기존 기록과 날짜가 겹치지 않는 항목만 추가합니다.\n계속할까요?'
         );
         if (!merge) return;
-        const rounds = Array.isArray(data) ? data : (data.rounds || []);
+        const rawRounds = Array.isArray(data) ? data : (data.rounds || []);
         const practices = Array.isArray(data) ? [] : (data.practices || []);
-        const { added, skipped } = importRounds(rounds, 'merge');
+
+        // Give every incoming round its final id up front, then strip base64
+        // photos out of the payload before it reaches localStorage — they go
+        // to IndexedDB, keyed by that same id.
+        const photosById = new Map();
+        const rounds = rawRounds.map((r) => {
+          const withId = { ...r, id: r.id || uid() };
+          if (typeof withId.photo === 'string' && withId.photo.startsWith('data:')) {
+            photosById.set(withId.id, withId.photo);
+            delete withId.photo;
+            withId.hasPhoto = true;
+          }
+          return withId;
+        });
+
+        const { added, skipped, addedRounds } = importRounds(rounds, 'merge');
+        await Promise.all(addedRounds.map(async (stored) => {
+          const dataUrl = photosById.get(stored.id);
+          if (!dataUrl) return;
+          try {
+            await putPhoto(stored.id, dataUrlToBlob(dataUrl));
+          } catch (e) {
+            console.error('photo import failed', stored.id, e);
+          }
+        }));
+
         const practiceResult = importPractices(practices);
         const totalAdded = added + practiceResult.added;
         const totalSkipped = skipped + practiceResult.skipped;
@@ -208,6 +274,7 @@ function setupSettingsModal() {
 
   openBtn.addEventListener('click', () => {
     render();
+    fillStorageUsage(body);
     openModal(overlay);
   });
   closeBtn.addEventListener('click', () => closeModal(overlay));
@@ -234,6 +301,15 @@ function init() {
   setupServiceWorker();
   subscribe(() => renderCurrentView());
   goToTab('home');
+
+  // Move any base64 photos still sitting in localStorage over to IndexedDB.
+  // Runs after the first render so startup isn't blocked; the store notifies
+  // subscribers when it's done, which repaints the affected views.
+  migrateLegacyPhotos()
+    .then((count) => {
+      if (count) console.info(`${count} photo(s) moved from localStorage to IndexedDB`);
+    })
+    .catch((e) => console.error('photo migration failed', e));
 }
 
 init();

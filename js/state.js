@@ -1,5 +1,6 @@
 import { getRounds, saveRounds, getSettings, saveSettings, getPractices, savePractices } from './storage.js';
-import { uid, todayStr } from './utils.js';
+import { uid, todayStr, dataUrlToBlob } from './utils.js';
+import { putPhoto, deletePhoto, releasePhotoUrl } from './photo-store.js';
 
 const listeners = new Set();
 
@@ -76,7 +77,7 @@ export function addRound(data) {
     companionScores: data.companionScores || [],
     cancelled: !!data.cancelled,
     isBlock: !!data.isBlock,
-    photo: data.photo || null,
+    hasPhoto: !!data.hasPhoto,
     createdAt: Date.now(),
   };
   store.rounds.push(round);
@@ -111,6 +112,8 @@ export function deleteRound(id) {
     notify();
     throw new Error(STORAGE_FULL_MESSAGE);
   }
+  releasePhotoUrl(id);
+  deletePhoto(id).catch((e) => console.error('photo cleanup failed', e));
   notify();
 }
 
@@ -118,7 +121,8 @@ export function deleteRound(id) {
  * Bulk import rounds (e.g. from a JSON backup or converted spreadsheet export).
  * mode: 'merge' (default) appends imported rounds whose date doesn't already
  * exist locally, skipping the rest; 'replace' wipes existing rounds first.
- * Returns { added, skipped }.
+ * Returns { added, skipped, addedRounds } — addedRounds carries the stored
+ * objects (with their final ids) so the caller can attach photos to them.
  */
 export function importRounds(newRounds, mode = 'merge') {
   if (!Array.isArray(newRounds)) throw new Error('가져올 데이터 형식이 올바르지 않습니다.');
@@ -133,11 +137,11 @@ export function importRounds(newRounds, mode = 'merge') {
       throw new Error(STORAGE_FULL_MESSAGE);
     }
     notify();
-    return { added: store.rounds.length, skipped: 0 };
+    return { added: store.rounds.length, skipped: 0, addedRounds: store.rounds.slice() };
   }
 
   const existingDates = new Set(store.rounds.map((r) => r.date));
-  let added = 0;
+  const addedRounds = [];
   let skipped = 0;
   newRounds.forEach((r) => {
     if (existingDates.has(r.date)) {
@@ -145,8 +149,9 @@ export function importRounds(newRounds, mode = 'merge') {
       return;
     }
     existingDates.add(r.date);
-    store.rounds.push({ ...r, id: r.id || uid() });
-    added += 1;
+    const stored = { ...r, id: r.id || uid() };
+    store.rounds.push(stored);
+    addedRounds.push(stored);
   });
   if (!persistRounds()) {
     store.rounds = previous;
@@ -154,7 +159,40 @@ export function importRounds(newRounds, mode = 'merge') {
     throw new Error(STORAGE_FULL_MESSAGE);
   }
   notify();
-  return { added, skipped };
+  return { added: addedRounds.length, skipped, addedRounds };
+}
+
+/**
+ * One-time move of legacy base64 photos out of localStorage and into
+ * IndexedDB. Photos are written to IndexedDB first; only once a photo is
+ * safely stored is its base64 copy dropped from the rounds JSON — so an
+ * interrupted or failed migration leaves the original data untouched rather
+ * than losing a photo. Returns the number of photos moved.
+ */
+export async function migrateLegacyPhotos() {
+  const legacy = store.rounds.filter((r) => typeof r.photo === 'string' && r.photo.startsWith('data:'));
+  if (!legacy.length) return 0;
+
+  const migrated = [];
+  for (const round of legacy) {
+    try {
+      await putPhoto(round.id, dataUrlToBlob(round.photo));
+      migrated.push(round);
+    } catch (e) {
+      console.error('photo migration failed for round', round.id, e);
+    }
+  }
+  if (!migrated.length) return 0;
+
+  migrated.forEach((round) => {
+    delete round.photo;
+    round.hasPhoto = true;
+  });
+  // Dropping the base64 shrinks the payload dramatically, so this write
+  // succeeds even when localStorage was previously at its 5MB ceiling.
+  saveRounds(store.rounds);
+  notify();
+  return migrated.length;
 }
 
 export function updateSettings(patch) {

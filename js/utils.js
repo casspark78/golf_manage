@@ -117,34 +117,65 @@ export function fileToBase64(file) {
   });
 }
 
+function drawResized(file, maxDim, onCanvas, reject) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDim) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else if (height > maxDim) {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      onCanvas(canvas);
+    };
+    img.onerror = reject;
+    img.src = reader.result;
+  };
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+}
+
 /**
- * Downscale + re-encode an image file so it stays small enough for
- * localStorage (which has a ~5-10MB total quota shared by the whole app).
+ * Downscale + re-encode an image file to a binary JPEG Blob, which is what
+ * gets stored in IndexedDB. A Blob is ~2.7x smaller than the same image kept
+ * as a base64 string in localStorage (base64 inflates by a third, and
+ * localStorage stores every character as 2-byte UTF-16).
  */
-export function resizeImageToDataUrl(file, maxDim = 900, quality = 0.75) {
+export function resizeImageToBlob(file, maxDim = 1000, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    drawResized(file, maxDim, (canvas) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('이미지 변환에 실패했습니다.'))),
+        'image/jpeg',
+        quality
+      );
+    }, reject);
+  });
+}
+
+export function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > maxDim) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        } else if (height > maxDim) {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
+    reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
+}
+
+export function dataUrlToBlob(dataUrl) {
+  const commaIdx = dataUrl.indexOf(',');
+  const header = dataUrl.slice(0, commaIdx);
+  const mime = header.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+  const binary = atob(dataUrl.slice(commaIdx + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }

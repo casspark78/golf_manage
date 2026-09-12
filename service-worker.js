@@ -1,4 +1,4 @@
-const CACHE_NAME = 'haksu-golf-v37';
+const CACHE_NAME = 'haksu-golf-v38';
 const APP_SHELL = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const APP_SHELL = [
   './js/view-score.js',
   './js/view-stats.js',
   './js/view-practice.js',
+  './js/photo-store.js',
   './icons/icon-192.png',
   './icons/icon-192-maskable.png',
   './icons/icon-512.png',
