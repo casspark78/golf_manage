@@ -7,7 +7,7 @@ import { renderPractice } from './view-practice.js';
 import { openModal, closeModal, toast, confirmAction } from './components.js';
 import { geocodeLocation } from './weather.js';
 import { escapeHtml, getLocalStorageUsageBytes, blobToDataUrl, dataUrlToBlob, uid } from './utils.js';
-import { getPhoto, putPhoto, estimateStorage } from './photo-store.js';
+import { getPhoto, putPhoto, getAllPhotoIds, estimateStorage } from './photo-store.js';
 
 const SUN_PATH = `<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
 const MOON_PATH = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
@@ -88,6 +88,32 @@ function renderStorageGauge({ usage, quota, label }) {
 }
 
 /**
+ * Breakdown line under the gauge: how much of the fixed 5MB localStorage
+ * budget the records still take, and how many photos are actually in
+ * IndexedDB versus how many the records expect. A mismatch between those
+ * two counts is the quickest way to spot photos that never made it across.
+ */
+async function renderStorageBreakdown() {
+  const recordBytes = getLocalStorageUsageBytes();
+  const expected = getRoundsList().filter((r) => r.hasPhoto || r.photo).length;
+  let stored = null;
+  try {
+    stored = (await getAllPhotoIds()).length;
+  } catch (e) {
+    console.error('photo count failed', e);
+  }
+
+  const parts = [`기록 데이터 ${formatBytes(recordBytes)} / 5MB`];
+  if (stored === null) parts.push(`사진 ${expected}장`);
+  else parts.push(`사진 ${stored}장`);
+
+  const mismatch = stored !== null && stored < expected;
+  return `
+    <div class="desc" style="margin-top:6px;">${parts.join(' · ')}</div>
+    ${mismatch ? `<div class="desc" style="margin-top:4px; color:var(--danger);">기록상 사진은 ${expected}장인데 ${stored}장만 남아 있어요. 저장공간이 가득 찼던 동안 저장되지 못한 사진이 있는 것으로 보입니다.</div>` : ''}`;
+}
+
+/**
  * Fills in the storage gauge once navigator.storage.estimate() resolves.
  * That figure covers IndexedDB (where photos now live) plus the cached app
  * shell; if the browser doesn't expose it we fall back to measuring
@@ -97,13 +123,14 @@ async function fillStorageUsage(container) {
   const el = container.querySelector('#storage-usage');
   if (!el) return;
   const estimate = await estimateStorage();
-  el.innerHTML = estimate
+  const gauge = estimate
     ? renderStorageGauge({ usage: estimate.usage, quota: estimate.quota, label: '저장공간 사용량 (사진 포함)' })
     : renderStorageGauge({
       usage: getLocalStorageUsageBytes(),
       quota: 5 * 1024 * 1024,
       label: '브라우저 저장공간 사용량 (추정)',
     });
+  el.innerHTML = gauge + await renderStorageBreakdown();
 }
 
 function setupSettingsModal() {
